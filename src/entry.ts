@@ -38,6 +38,9 @@ async function main(argv: string[]): Promise<number> {
     (await import('./commands/auth/login.js')).default,
     (await import('./commands/auth/logout.js')).default,
     (await import('./commands/auth/whoami.js')).default,
+    (await import('./commands/config/get.js')).default,
+    (await import('./commands/config/set.js')).default,
+    (await import('./commands/config/env.js')).default,
   ];
   registerAll(program, modules);
 

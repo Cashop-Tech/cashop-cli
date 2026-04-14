@@ -38,3 +38,29 @@ export function saveConfig(path: string, cfg: Config): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, stringify(cfg), { mode: 0o600 });
 }
+
+export function getField(cfg: Config, key: string): unknown {
+  return key.split('.').reduce<any>((acc, k) => (acc == null ? acc : acc[k]), cfg);
+}
+
+export function setField(cfg: Config, key: string, value: string): Config {
+  const parts = key.split('.');
+  const out = structuredClone(cfg);
+  let node: any = out;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const p = parts[i]!;
+    if (node[p] == null || typeof node[p] !== 'object') node[p] = {};
+    node = node[p];
+  }
+  const leaf = parts[parts.length - 1]!;
+  node[leaf] = coerce(value);
+  return out;
+}
+
+function coerce(v: string): unknown {
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  if (v === 'null') return null;
+  if (/^-?\d+$/.test(v)) return Number(v);
+  return v;
+}
