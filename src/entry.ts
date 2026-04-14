@@ -41,6 +41,8 @@ async function main(argv: string[]): Promise<number> {
     (await import('./commands/config/get.js')).default,
     (await import('./commands/config/set.js')).default,
     (await import('./commands/config/env.js')).default,
+    (await import('./commands/product/search.js')).default,
+    (await import('./commands/product/get.js')).default,
   ];
   registerAll(program, modules);
 
