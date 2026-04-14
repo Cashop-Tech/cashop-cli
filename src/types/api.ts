@@ -42,3 +42,37 @@ export interface CartData {
   totalTaxIncludedAmount?: number;
   totalTaxAmount?: number;
 }
+
+// Order summary — matches /trade/cashop-order-prod/api/order/list response item shape.
+// Real API uses `orderNo` (not `orderId`), and status is a numeric code (not string enum).
+export interface OrderSummary {
+  orderNo: string;
+  orderGroupNo?: string;
+  orderStatus: number;          // e.g. 2 = 待发货
+  orderStatusName?: string;
+  brandId?: string;
+  brandName?: string;
+  productCount?: number;
+  totalProductAmount?: number;
+  paymentAmount?: number;
+  currency?: string;
+  payOverTime?: string;
+  paymentCountDown?: number;
+  [key: string]: unknown;
+}
+
+// /trade/cashop-order-prod/api/order/list returns PageDTO envelope with nested `data` array.
+export interface OrderListData {
+  pageIndex: number;
+  pageSize: number;
+  total: number;
+  totalCount?: number;
+  pages?: number;
+  currentPageSize?: number;
+  hasNext?: boolean;
+  data: OrderSummary[];
+  extra?: unknown;
+}
+
+// order detail — GET /api/order/{orderNo}; shape kept opaque per plan.
+export type OrderDetail = Record<string, unknown> & { orderNo?: string };
