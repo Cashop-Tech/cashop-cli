@@ -35,7 +35,7 @@ async function main(argv: string[]): Promise<number> {
     });
 
   const modules: import('./commands/index.js').CommandModule[] = [
-    // populated in later tasks
+    (await import('./commands/auth/login.js')).default,
   ];
   registerAll(program, modules);
 
