@@ -1,5 +1,27 @@
-# cashop-cli
+# Cashop-CLI
 
-Cashop 平台统一 CLI 工具。
+Official command-line interface for the Cashop platform.
 
-> 详见 `docs/` — implementation plan at `docs/superpowers/plans/2026-04-14-cashop-cli-p1-scaffold.md` in the workspace root.
+> Status: **early P0 development**. Not yet released — build from source.
+
+## Build from source
+
+```bash
+pnpm install
+pnpm run build
+node dist/entry.js --help
+```
+
+## Commands (P1 scope)
+
+- `cashop auth login/logout/whoami`
+- `cashop config get/set/env`
+- `cashop product search/get`
+- `cashop cart list/add`
+- `cashop order list/get`
+
+Coming soon: TUI chat (`cashop` with no args), OAuth Device Code, API keys, the rest of the domain verbs, and install.sh / Homebrew / npm distribution.
+
+## License
+
+UNLICENSED (private preview).
