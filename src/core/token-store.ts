@@ -96,12 +96,20 @@ export class TokenStore {
 }
 
 export async function selectBackend(passphrase: string): Promise<Backend> {
+  // CASHOP_CLI_BACKEND=file forces the encrypted-file backend. Also used
+  // automatically when stdin is not a TTY (CI, agents, scripts) because
+  // macOS Keychain prompts for ACL approval on first write and blocks
+  // indefinitely from a non-interactive process.
+  const forced = process.env.CASHOP_CLI_BACKEND;
+  const fallbackPath = `${homedir()}/.cashop/credentials.enc`;
+  if (forced === 'file' || (forced !== 'keytar' && !process.stdin.isTTY)) {
+    return new EncryptedFileBackend(fallbackPath, passphrase);
+  }
   try {
     const { default: keytar } = await import('keytar');
     await keytar.getPassword('cashop-cli', 'healthcheck');
     return new KeytarBackend();
   } catch {
-    const fallbackPath = `${homedir()}/.cashop/credentials.enc`;
     return new EncryptedFileBackend(fallbackPath, passphrase);
   }
 }
