@@ -36,6 +36,8 @@ async function main(argv: string[]): Promise<number> {
 
   const modules: import('./commands/index.js').CommandModule[] = [
     (await import('./commands/auth/login.js')).default,
+    (await import('./commands/auth/logout.js')).default,
+    (await import('./commands/auth/whoami.js')).default,
   ];
   registerAll(program, modules);
 
