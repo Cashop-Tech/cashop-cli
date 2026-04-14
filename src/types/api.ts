@@ -26,3 +26,19 @@ export interface ProductSearchData {
 
 // product/v2 returns a full product document; opaque for P1.
 export type ProductDetail = Record<string, unknown> & { spuCode: string };
+
+export interface CartData {
+  effectiveCartGroupList: unknown[];
+  invalidCartLineList: unknown[];
+  totalProductCount: number;
+  totalProductAmount: number;
+  totalFreightAmount: number;
+  totalDiscountAmount: number;
+  totalSettleAmount: number;
+  cartCount: number;
+  currency: string | null;
+  ddpEnabled: boolean;
+  ddpCountryCode?: string | null;
+  totalTaxIncludedAmount?: number;
+  totalTaxAmount?: number;
+}

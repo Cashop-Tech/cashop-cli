@@ -43,6 +43,8 @@ async function main(argv: string[]): Promise<number> {
     (await import('./commands/config/env.js')).default,
     (await import('./commands/product/search.js')).default,
     (await import('./commands/product/get.js')).default,
+    (await import('./commands/cart/list.js')).default,
+    (await import('./commands/cart/add.js')).default,
   ];
   registerAll(program, modules);
 
