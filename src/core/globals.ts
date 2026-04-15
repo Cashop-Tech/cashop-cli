@@ -44,7 +44,7 @@ export async function buildContext(input: {
     : await selectBackend(input.envVars.CASHOP_PASSPHRASE ?? 'cashop-default');
   const store = new TokenStore(backend);
 
-  const provider = await selectProvider({ env, store, flags: { apiKey: input.flags.apiKey }, envVars: input.envVars });
+  const provider = await selectProvider({ env, store, flags: { apiKey: input.flags.apiKey }, envVars: input.envVars, base });
 
   return {
     env, config, baseUrl: base, store, provider, logger,
