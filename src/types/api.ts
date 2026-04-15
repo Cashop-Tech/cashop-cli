@@ -76,3 +76,41 @@ export interface OrderListData {
 
 // order detail — GET /api/order/{orderNo}; shape kept opaque per plan.
 export type OrderDetail = Record<string, unknown> & { orderNo?: string };
+
+// ---- P5 api-key ----
+
+export type ApiKeyTtl = '30d' | '90d' | '1y' | 'never';
+
+export interface ApiKeyCreateRequest {
+  name: string;
+  ttl: ApiKeyTtl;
+}
+
+export interface ApiKeyCreateResponse {
+  kid: string;
+  key: string;
+  name: string;
+  createdAt: number;
+  /** null = never expires */
+  expiresAt: number | null;
+}
+
+export interface ApiKeyListItem {
+  kid: string;
+  name: string;
+  createdAt: number;
+  expiresAt: number | null;
+  lastUsedAt: number | null;
+}
+
+export interface ApiKeyListResponse {
+  items: ApiKeyListItem[];
+}
+
+export interface ApiKeyRevokeRequest {
+  kid: string;
+}
+
+export interface ApiKeyRevokeResponse {
+  revoked: boolean;
+}
