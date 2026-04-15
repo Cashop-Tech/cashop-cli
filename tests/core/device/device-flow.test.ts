@@ -47,7 +47,7 @@ describe('runDeviceFlow', () => {
   it('happy path: saves token with correct snake_case mapping', async () => {
     server.use(http.post(DEVICE, () => deviceOk()));
     let calls = 0;
-    server.use(http.post(POLL, () => (++calls === 1 ? pollErr('703007', 'pending') : pollOk())));
+    server.use(http.post(POLL, () => (++calls === 1 ? pollErr('703001', 'pending') : pollOk())));
 
     const store = new TokenStore(new InMemoryBackend());
     vi.useFakeTimers();
@@ -68,7 +68,7 @@ describe('runDeviceFlow', () => {
   it('slow_down doubles interval, capped at 30s', async () => {
     server.use(http.post(DEVICE, () => deviceOk({ interval: 5 })));
     const waits: number[] = [];
-    server.use(http.post(POLL, () => pollErr('703008', 'slow down')));
+    server.use(http.post(POLL, () => pollErr('703002', 'slow down')));
 
     const store = new TokenStore(new InMemoryBackend());
     const p = runDeviceFlow({
@@ -83,7 +83,7 @@ describe('runDeviceFlow', () => {
 
   it('703009 access_denied → CashopCliError', async () => {
     server.use(http.post(DEVICE, () => deviceOk()));
-    server.use(http.post(POLL, () => pollErr('703009', 'denied')));
+    server.use(http.post(POLL, () => pollErr('703004', 'denied')));
     const store = new TokenStore(new InMemoryBackend());
     await expect(runDeviceFlow({
       base: BASE, env: 'stable', store, noBrowser: true, printer: () => {},
@@ -93,7 +93,7 @@ describe('runDeviceFlow', () => {
 
   it('703010 expired_token → CashopCliError', async () => {
     server.use(http.post(DEVICE, () => deviceOk()));
-    server.use(http.post(POLL, () => pollErr('703010', 'expired')));
+    server.use(http.post(POLL, () => pollErr('703003', 'expired')));
     const store = new TokenStore(new InMemoryBackend());
     await expect(runDeviceFlow({
       base: BASE, env: 'stable', store, noBrowser: true, printer: () => {},
@@ -103,7 +103,7 @@ describe('runDeviceFlow', () => {
 
   it('local timeout once now >= startedAt + expires_in*1000', async () => {
     server.use(http.post(DEVICE, () => deviceOk({ expiresIn: 1 })));
-    server.use(http.post(POLL, () => pollErr('703007', 'pending')));
+    server.use(http.post(POLL, () => pollErr('703001', 'pending')));
     const store = new TokenStore(new InMemoryBackend());
     let now = 0;
     await expect(runDeviceFlow({

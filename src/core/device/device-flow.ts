@@ -83,10 +83,10 @@ export async function runDeviceFlow(input: DeviceFlowInput): Promise<{ userId: s
       return { userId: String(tok.userId) };
     } catch (e) {
       if (!(e instanceof BusinessError)) throw e;
-      if (e.code === '703007') continue;
-      if (e.code === '703008') { interval = Math.min(interval * 2, 30); continue; }
-      if (e.code === '703009') throw new CashopCliError('Authorization denied by user.');
-      if (e.code === '703010') throw new CashopCliError('Authorization expired. Try again: cashop login --device');
+      if (e.code === '703001') continue;
+      if (e.code === '703002') { interval = Math.min(interval * 2, 30); continue; }
+      if (e.code === '703004') throw new CashopCliError('Authorization denied by user.');
+      if (e.code === '703003') throw new CashopCliError('Authorization expired. Try again: cashop login --device');
       throw e;
     }
   }
