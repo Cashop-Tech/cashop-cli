@@ -8,8 +8,8 @@ const DETAIL_PATH = '/business/cashop-business-aggr-prod/open/product/v2';
 
 const mod: CommandModule = {
   register(program: Command) {
-    const prod = ensureGroup(program, 'product');
-    prod.command('get <spuCode>')
+    program
+      .command('product <spuCode>')
       .description('Show a product by spuCode')
       .action(async function (this: Command, spuCode: string) {
         const ctx = getCtx(this as unknown as Command);
@@ -22,7 +22,3 @@ const mod: CommandModule = {
   },
 };
 export default mod;
-
-function ensureGroup(program: Command, name: string): Command {
-  return program.commands.find(c => c.name() === name) ?? program.command(name).description('Product commands');
-}

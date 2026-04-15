@@ -27,7 +27,7 @@ describe('auth whoami', () => {
     (program as any).__ctx = makeCtx(store);
     whoamiCmd.register(program);
     const log = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    await program.parseAsync(['auth', 'whoami'], { from: 'user' });
+    await program.parseAsync(['whoami'], { from: 'user' });
     const out = log.mock.calls.map(c => String(c[0])).join('');
     expect(out).toMatch(/77/);
     log.mockRestore();
@@ -41,7 +41,7 @@ describe('auth whoami', () => {
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
       throw new Error(`exit ${code}`);
     }) as never);
-    await expect(program.parseAsync(['auth', 'whoami'], { from: 'user' })).rejects.toThrow(/exit 4/);
+    await expect(program.parseAsync(['whoami'], { from: 'user' })).rejects.toThrow(/exit 4/);
     exitSpy.mockRestore();
   });
 });

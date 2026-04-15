@@ -9,8 +9,8 @@ const LIST_PATH = '/trade/cashop-order-prod/api/cart/list';
 const mod: CommandModule = {
   register(program: Command) {
     const cart = ensureGroup(program, 'cart');
-    cart.command('list')
-      .description('List cart items (requires login)')
+    cart
+      .description('List cart items (requires login). Use `cart add` to add a SKU.')
       .action(async function (this: Command) {
         const ctx = getCtx(this as unknown as Command);
         const code = await runCmd(ctx, async () =>
@@ -24,5 +24,5 @@ const mod: CommandModule = {
 export default mod;
 
 function ensureGroup(program: Command, name: string): Command {
-  return program.commands.find(c => c.name() === name) ?? program.command(name).description('Cart commands');
+  return program.commands.find(c => c.name() === name) ?? program.command(name);
 }

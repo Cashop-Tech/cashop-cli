@@ -32,7 +32,7 @@ describe('cart list', () => {
     } as any;
     listCmd.register(program);
     const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    await program.parseAsync(['cart', 'list'], { from: 'user' });
+    await program.parseAsync(['cart'], { from: 'user' });
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     expect(JSON.parse(out).cartCount).toBe(0);
     spy.mockRestore();

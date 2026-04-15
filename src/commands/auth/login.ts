@@ -9,8 +9,7 @@ import { saveConfig } from '../../core/config.js';
 
 const mod: CommandModule = {
   register(program: Command) {
-    const auth = ensureGroup(program, 'auth', 'Authentication commands');
-    auth
+    program
       .command('login')
       .description('Log in via email/password (P1 — will be replaced by OAuth in P3)')
       .requiredOption('--email <email>', 'email address')
@@ -36,9 +35,3 @@ const mod: CommandModule = {
   },
 };
 export default mod;
-
-function ensureGroup(program: Command, name: string, description: string): Command {
-  const existing = program.commands.find(c => c.name() === name);
-  if (existing) return existing;
-  return program.command(name).description(description);
-}

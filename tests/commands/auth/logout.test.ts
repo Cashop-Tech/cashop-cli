@@ -26,7 +26,7 @@ describe('auth logout', () => {
     const program = new Command();
     (program as any).__ctx = makeCtx(store);
     logoutCmd.register(program);
-    await program.parseAsync(['auth', 'logout'], { from: 'user' });
+    await program.parseAsync(['logout'], { from: 'user' });
     expect(await store.getPasswordToken('stable')).toBeNull();
   });
 });

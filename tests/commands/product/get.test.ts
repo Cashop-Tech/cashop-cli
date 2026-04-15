@@ -28,7 +28,7 @@ describe('product get', () => {
     } as any;
     getCmd.register(program);
     const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    await program.parseAsync(['product', 'get', 'JP_1'], { from: 'user' });
+    await program.parseAsync(['product', 'JP_1'], { from: 'user' });
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     expect(JSON.parse(out).spuCode).toBe('JP_1');
     spy.mockRestore();

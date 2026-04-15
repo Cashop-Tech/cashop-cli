@@ -4,8 +4,8 @@ import { getCtx, runCmd } from '../_helpers.js';
 
 const mod: CommandModule = {
   register(program: Command) {
-    const auth = ensureGroup(program, 'auth');
-    auth.command('logout')
+    program
+      .command('logout')
       .description('Clear stored tokens for the current env')
       .action(async function (this: Command) {
         const ctx = getCtx(this as unknown as Command);
@@ -18,7 +18,3 @@ const mod: CommandModule = {
   },
 };
 export default mod;
-
-function ensureGroup(program: Command, name: string): Command {
-  return program.commands.find(c => c.name() === name) ?? program.command(name);
-}

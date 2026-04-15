@@ -28,7 +28,7 @@ describe('order get', () => {
     } as any;
     getCmd.register(program);
     const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    await program.parseAsync(['order', 'get', 'ORD-1'], { from: 'user' });
+    await program.parseAsync(['order', 'ORD-1'], { from: 'user' });
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     expect(JSON.parse(out).orderNo).toBe('ORD-1');
     spy.mockRestore();

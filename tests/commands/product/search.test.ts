@@ -40,7 +40,7 @@ describe('product search', () => {
     } as any;
     searchCmd.register(program);
     const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    await program.parseAsync(['product', 'search', 'phone', '--page', '2', '--page-size', '5'], { from: 'user' });
+    await program.parseAsync(['search', 'phone', '--page', '2', '--page-size', '5'], { from: 'user' });
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     const parsed = JSON.parse(out);
     expect(parsed.data[0].suppInfoVO.title).toBe('Phone');

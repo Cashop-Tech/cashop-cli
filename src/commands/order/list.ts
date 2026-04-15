@@ -8,8 +8,8 @@ const LIST_PATH = '/trade/cashop-order-prod/api/order/list';
 
 const mod: CommandModule = {
   register(program: Command) {
-    const ord = ensureGroup(program, 'order');
-    ord.command('list')
+    program
+      .command('orders')
       .description('List your orders (requires login)')
       .option('--page <n>', 'page number (1-based)', '1')
       .option('--page-size <n>', 'items per page', '10')
@@ -26,7 +26,3 @@ const mod: CommandModule = {
   },
 };
 export default mod;
-
-function ensureGroup(program: Command, name: string): Command {
-  return program.commands.find(c => c.name() === name) ?? program.command(name).description('Order commands');
-}

@@ -12,11 +12,22 @@ pnpm run typecheck                 # tsc --noEmit
 pnpm run build                     # compile to dist/
 ```
 
+## P1 shell command paths
+
+Commands are flat (no `auth`/`product`/`order` groups); files are still grouped by domain on disk.
+
+- `cashop login --email … --password …` / `cashop logout` / `cashop whoami`
+- `cashop config` / `cashop config <key>` / `cashop config <key> <value>`
+- `cashop env` / `cashop env stable|prod`
+- `cashop search <keyword>` / `cashop product <spuCode>`
+- `cashop cart` (list, default) / `cashop cart add --spu … --sku … --qty …`
+- `cashop orders` / `cashop order <orderNo>`
+
 ## Architecture
 
 - `src/entry.ts`: argv → Commander → preAction builds CliContext → subcommand `.action()`
 - `src/core/*`: config, logger, http-client, token-store, auth-provider, output, errors, confirm, globals
-- `src/commands/<domain>/<verb>.ts`: one file per subcommand
+- `src/commands/<domain>/<verb>.ts`: one file per subcommand (most register flat top-level verbs on `program`; `cart/*` still share a `cart` group via `ensureGroup`)
 - All network calls go through `core/http-client.ts::gatewayRequest`
 - All token storage goes through `core/token-store.ts`
 - All errors flow through `core/errors.ts` + `core/_helpers.ts::runCmd`

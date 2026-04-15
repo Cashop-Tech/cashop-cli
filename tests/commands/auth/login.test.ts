@@ -34,7 +34,7 @@ describe('auth login', () => {
     const program = new Command();
     (program as any).__ctx = makeCtx(store);
     loginCmd.register(program);
-    await program.parseAsync(['auth', 'login', '--email', 'u@x.com', '--password', 'p'], { from: 'user' });
+    await program.parseAsync(['login', '--email', 'u@x.com', '--password', 'p'], { from: 'user' });
     const saved = await store.getPasswordToken('stable');
     expect(saved?.accessToken).toBe('TOK');
     expect(saved?.userId).toBe('42');

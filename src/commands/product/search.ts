@@ -9,8 +9,8 @@ const SEARCH_PATH = '/business/cashop-business-aggr-prod/open/product/list';
 
 const mod: CommandModule = {
   register(program: Command) {
-    const prod = ensureGroup(program, 'product');
-    prod.command('search <keyword>')
+    program
+      .command('search <keyword>')
       .description('Search products (aggregated catalogue)')
       .option('--page <n>', 'page number (1-based)', '1')
       .option('--page-size <n>', 'items per page (1-50)', '10')
@@ -41,7 +41,3 @@ const mod: CommandModule = {
   },
 };
 export default mod;
-
-function ensureGroup(program: Command, name: string): Command {
-  return program.commands.find(c => c.name() === name) ?? program.command(name).description('Product commands');
-}

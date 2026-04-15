@@ -30,7 +30,7 @@ describe('order list', () => {
     } as any;
     listCmd.register(program);
     const spy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    await program.parseAsync(['order', 'list', '--page', '2', '--page-size', '5'], { from: 'user' });
+    await program.parseAsync(['orders', '--page', '2', '--page-size', '5'], { from: 'user' });
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     expect(JSON.parse(out).pageIndex).toBe(2);
     spy.mockRestore();
