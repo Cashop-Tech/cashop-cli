@@ -15,7 +15,8 @@ REPO="Cashop-Tech/cashop-cli"
 INSTALL_DIR="${CASHOP_HOME:-$HOME/.cashop}"
 MIN_NODE_MAJOR=18
 
-CURRENT_LIB=""   # set by extract(); cleaned up on ERR if non-empty
+CURRENT_LIB=""   # set by extract(); cleared at end of main(); cleaned up on ERR if non-empty
+TMPDIR_CASHOP="" # set by main(); removed on EXIT
 
 log()    { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 warn()   { printf '\033[1;33mwarn:\033[0m %s\n' "$*" >&2; }
@@ -27,7 +28,13 @@ cleanup_on_error() {
     rm -rf "$CURRENT_LIB"
   fi
 }
+cleanup_on_exit() {
+  if [ -n "$TMPDIR_CASHOP" ] && [ -d "$TMPDIR_CASHOP" ]; then
+    rm -rf "$TMPDIR_CASHOP"
+  fi
+}
 trap cleanup_on_error ERR
+trap cleanup_on_exit  EXIT
 
 header() {
   cat <<'BANNER'
@@ -211,11 +218,9 @@ main() {
   version=$(resolve_version)
   log "installing cashop v${version}"
 
-  local tmp
-  tmp=$(mktemp -d)
-  trap 'cleanup_on_error; rm -rf "$tmp"' EXIT
+  TMPDIR_CASHOP=$(mktemp -d)
 
-  local tarball="$tmp/cashop-cli-${version}.tar.gz"
+  local tarball="$TMPDIR_CASHOP/cashop-cli-${version}.tar.gz"
   download_tarball "$version" "$tarball"
   verify_checksum "$tarball" "$version"
   extract "$tarball" "$version"
@@ -223,6 +228,10 @@ main() {
   create_symlink "$version"
   prune_old_versions
   smoke_test "$version"
+
+  # Install succeeded — disarm the ERR cleanup so a later hiccup (e.g. shell
+  # weirdness during exit) cannot wipe the freshly installed directory.
+  CURRENT_LIB=""
 
   log "installed cashop v${version} to $INSTALL_DIR"
   print_path_hint
