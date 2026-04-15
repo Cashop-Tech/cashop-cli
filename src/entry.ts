@@ -20,6 +20,7 @@ async function loadModules() {
     (await import('./commands/order/list.js')).default,
     (await import('./commands/order/get.js')).default,
     (await import('./commands/apikey/create.js')).default,
+    (await import('./commands/apikey/list.js')).default,
     (await import('./commands/ask.js')).default,
     (await import('./commands/sessions.js')).default,
     (await import('./commands/session.js')).default,
