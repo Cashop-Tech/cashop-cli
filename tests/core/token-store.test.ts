@@ -39,3 +39,36 @@ describe('EncryptedFileBackend', () => {
     expect(got.password_tokens.stable?.accessToken).toBe('z');
   });
 });
+
+describe('TokenStore oauth methods', () => {
+  it('saveOAuth / getOAuth roundtrips including refresh_expires_at', async () => {
+    const store = new TokenStore(new InMemoryBackend());
+    const now = Date.now();
+    await store.saveOAuth('stable', {
+      access_token: 'A', refresh_token: 'R',
+      expires_at: now + 30 * 86_400_000,
+      refresh_expires_at: now + 90 * 86_400_000,
+      account: '9527', scopes: ['cli'],
+    });
+    const got = await store.getOAuth('stable');
+    expect(got?.access_token).toBe('A');
+    expect(got?.refresh_token).toBe('R');
+    expect(got?.account).toBe('9527');
+    expect(got?.scopes).toEqual(['cli']);
+    expect(got?.refresh_expires_at).toBe(now + 90 * 86_400_000);
+  });
+
+  it('clearOAuth removes only the oauth entry for the env', async () => {
+    const store = new TokenStore(new InMemoryBackend());
+    await store.saveOAuth('stable', {
+      access_token: 'A', refresh_token: 'R',
+      expires_at: 1, refresh_expires_at: 2, account: '1', scopes: ['cli'],
+    });
+    await store.savePasswordToken('stable', {
+      accessToken: 'P', refreshToken: 'PR', expires_at: 1, refresh_expires_at: 2, userId: '1',
+    });
+    await store.clearOAuth('stable');
+    expect(await store.getOAuth('stable')).toBeNull();
+    expect(await store.getPasswordToken('stable')).not.toBeNull();
+  });
+});

@@ -15,8 +15,12 @@ export interface PasswordToken {
   email?: string;
 }
 export interface OAuthToken {
-  access_token: string; refresh_token: string; expires_at: number;
-  account: string; scopes: string[];
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;          // ms epoch
+  refresh_expires_at: number;  // ms epoch
+  account: string;
+  scopes: string[];
 }
 export interface ApiKeyToken { key: string; kid: string; name: string; }
 
@@ -93,6 +97,16 @@ export class TokenStore {
   }
   async getApiKey(env: Env) { return (await this.backend.read()).api_keys[env] ?? null; }
   async getOAuth(env: Env) { return (await this.backend.read()).oauth[env] ?? null; }
+  async saveOAuth(env: Env, tok: OAuthToken) {
+    const b = await this.backend.read();
+    b.oauth[env] = tok;
+    await this.backend.write(b);
+  }
+  async clearOAuth(env: Env) {
+    const b = await this.backend.read();
+    delete b.oauth[env];
+    await this.backend.write(b);
+  }
 }
 
 export async function selectBackend(passphrase: string): Promise<Backend> {
