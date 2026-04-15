@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import type { CliContext } from '../core/globals.js';
-import { exitCodeFor } from '../core/errors.js';
+import { BusinessError, exitCodeFor, friendlyBusinessMessage } from '../core/errors.js';
 import { format } from '../core/output.js';
 
 export function getCtx(cmd: Command): CliContext {
@@ -29,7 +29,11 @@ export async function runCmd<T>(
     if (data !== undefined) write(format(data, { mode: ctx.outputMode }));
     return 0;
   } catch (e) {
-    writeErr(e instanceof Error ? e.message : String(e));
+    if (e instanceof BusinessError) {
+      writeErr(friendlyBusinessMessage(e.code, e.message));
+    } else {
+      writeErr(e instanceof Error ? e.message : String(e));
+    }
     return exitCodeFor(e);
   }
 }
