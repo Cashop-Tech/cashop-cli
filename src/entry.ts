@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { homedir } from 'node:os';
+import { createRequire } from 'node:module';
 import { buildContext, type GlobalFlags } from './core/globals.js';
 import { exitCodeFor } from './core/errors.js';
 import { registerAll } from './commands/index.js';
 import { startTui } from './tui/index.js';
+
+const pkg = createRequire(import.meta.url)('../package.json') as { version: string };
 
 async function loadModules() {
   return [
@@ -88,7 +91,7 @@ async function main(argv: string[]): Promise<number> {
   program
     .name('cashop-cli')
     .description('Cashop-CLI — official command-line interface for the Cashop platform')
-    .version('0.1.0-dev')
+    .version(pkg.version)
     .option('--env <env>', 'override environment (stable|prod)')
     .option('--json', 'machine-readable JSON output')
     .option('--no-color', 'disable colored output')

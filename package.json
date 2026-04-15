@@ -1,6 +1,6 @@
 {
   "name": "cashop-cli",
-  "version": "0.1.0-dev",
+  "version": "0.1.0",
   "description": "Cashop-CLI — official command-line interface for the Cashop platform",
   "type": "module",
   "bin": {
