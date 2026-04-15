@@ -23,6 +23,22 @@ Commands are flat (no `auth`/`product`/`order` groups); files are still grouped 
 - `cashop cart` (list, default) / `cashop cart add --spu … --sku … --qty …`
 - `cashop orders` / `cashop order <orderNo>`
 
+## P2 TUI + chat (2026-04-15)
+
+- `cashop` (no args) → readline TUI; prefixes: plain=chat, `!`=bang, `/`=slash
+- `cashop --resume` → TUI + continue `last_session_id`
+- `cashop ask "<msg>" [--resume|--session <id>] [--json]` → one-shot SSE chat
+- `cashop sessions` → `GET /ai/cashop-ai/rpc/auth/sessions`
+- `cashop session rm <id>` → `DELETE /ai/cashop-ai/rpc/auth/sessions/{id}` (`-y` skip confirm)
+
+TUI dispatches:
+- `parseLine(raw)` → `{kind: 'empty'|'chat'|'bang'|'slash', ...}`
+- bang builds a fresh `Command` with `exitOverride()` and reuses P1 modules
+- slash commands: `/help` `/new` `/sessions` `/resume <id>` `/exit`
+
+State:
+- `~/.cashop/chat.yaml` holds `last_session_id` only (messages live server-side)
+
 ## Architecture
 
 - `src/entry.ts`: argv → Commander → preAction builds CliContext → subcommand `.action()`

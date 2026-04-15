@@ -12,16 +12,34 @@ pnpm run build
 node dist/entry.js --help
 ```
 
-## Commands (P1 scope)
+## Usage
 
-- `cashop login --email … --password …` / `cashop logout` / `cashop whoami`
-- `cashop config` (print all) / `cashop config <key>` / `cashop config <key> <value>`
-- `cashop env` (print) / `cashop env stable|prod` (switch)
-- `cashop search <keyword>` / `cashop product <spuCode>`
-- `cashop cart` (list) / `cashop cart add --spu … --sku … --qty …`
-- `cashop orders` / `cashop order <orderNo>`
+### Enter the TUI (main entry)
 
-Coming soon: TUI chat (`cashop` with no args), OAuth Device Code, API keys, the rest of the domain verbs, and install.sh / Homebrew / npm distribution.
+```bash
+cashop                   # interactive TUI
+cashop --resume          # TUI + continue last chat session
+```
+
+Inside the TUI:
+- plain text → chat with the AI
+- `!<verb>` → run a shell subcommand (output is shown in the conversation)
+- `/help` → list slash commands (/new /sessions /resume /exit)
+
+### One-shot commands (pipe-friendly)
+
+```bash
+cashop login --email u@x.com --password ...
+cashop logout / whoami
+cashop search <keyword> / product <spuCode>
+cashop cart / cart add --sku ... --spu ... --qty N
+cashop orders / order <orderNo>
+cashop ask "question"          # one-shot AI chat
+cashop sessions                # list chat sessions
+cashop session rm <id>         # delete
+```
+
+Coming soon: OAuth Device Code, API keys, the rest of the domain verbs, and install.sh / Homebrew / npm distribution.
 
 ## License
 
