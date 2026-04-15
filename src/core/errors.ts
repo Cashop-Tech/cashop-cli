@@ -25,6 +25,17 @@ export class CashopCliError extends Error {
   }
 }
 
+const APIKEY_FRIENDLY: Record<string, string> = {
+  '703012': 'Reached limit of 10 API keys. Revoke an old one with: cashop apikey rm <kid>',
+  '703013': 'API keys cannot manage other API keys. Use device login: cashop login --device',
+  '703014': 'An API key with that name already exists. Pick a different name or revoke the old one.',
+  '703015': 'API key not found.',
+};
+
+export function friendlyBusinessMessage(code: string, fallback: string): string {
+  return APIKEY_FRIENDLY[code] ?? fallback;
+}
+
 export function exitCodeFor(err: unknown): number {
   if (err instanceof BadArgsError) return 2;
   if (err instanceof NetworkError) return 3;
