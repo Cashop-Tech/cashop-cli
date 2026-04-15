@@ -54,7 +54,27 @@ headless/SSH). `cashop logout` clears both device and password tokens.
 token refresh is not race-safe. The server detects refresh-token reuse and revokes the
 entire session (703011), which wipes your local CLI token for that env.
 
-Coming soon: API keys, the rest of the domain verbs, and install.sh / Homebrew / npm distribution.
+## API Keys
+
+Long-lived bearer tokens for automation and CI. Only an interactive
+oauth-device session can mint or revoke them.
+
+```bash
+cashop login --device                         # one-time, gets a device session
+cashop apikey create --name ci-deploy --ttl 90d
+# → prints csk_live_xxxx  (shown once — copy it now)
+
+cashop apikey list
+cashop --api-key csk_live_xxxx search foo     # use the key
+CASHOP_API_KEY=csk_live_xxxx cashop search foo # or via env
+cashop apikey rm ak_xxxx
+```
+
+Limits and semantics: up to 10 active keys per user; TTL choices are
+`30d | 90d | 180d | 1y | never`; `lastUsedAt` is stamped on every request
+(debounced to 60s); keys cannot manage other keys.
+
+Coming soon: the rest of the domain verbs, and install.sh / Homebrew / npm distribution.
 
 ## License
 

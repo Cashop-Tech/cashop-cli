@@ -65,6 +65,30 @@ State:
 5. Register in `src/entry.ts`
 6. Commit test + impl + registration together
 
+## P5 apikey commands
+
+Long-lived bearer tokens for automation. Managed only by an oauth-device
+session (guarded by `requireOAuthDevice` — trying to create a key while
+authenticated with another api-key returns 703013).
+
+- `cashop apikey create --name <n> [--ttl 30d|90d|180d|1y|never] [--json]` →
+  `{kid, key, name, createdAt, expiresAt}`; `key` is shown once
+- `cashop apikey list [--json]` → name, kid, createdAt, expiresAt, lastUsedAt
+- `cashop apikey rm <kid> [-y] [--json]` → confirm prompt unless `-y`
+
+Using a key for requests: `cashop --api-key <csk_live_xxx> search foo` (or
+`CASHOP_API_KEY` env var). The provider layer was wired in P4; P5 only
+adds the management verbs.
+
+Friendly errors (see `src/core/errors.ts`):
+- `703012` reached 10-key limit
+- `703013` api-key cannot manage api-keys
+- `703014` duplicate name
+- `703015` kid not found / not owned
+
+Smoke: `scripts/smoke-apikey.sh` — login via device, create, list, call
+search via `--api-key`, assert `lastUsedAt` updated, revoke, list empty.
+
 ## P0 milestone map
 
 - **This plan (P1)**: scaffold + password auth + product/cart/order commands
