@@ -2,7 +2,7 @@
 # cashop-cli installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/install.sh | bash
 #
 # Env vars:
 #   CASHOP_HOME           override install root (default: $HOME/.cashop)

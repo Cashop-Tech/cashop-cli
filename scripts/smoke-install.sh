@@ -4,7 +4,7 @@
 # real ~/.cashop directory.
 set -euo pipefail
 
-INSTALLER_URL="${INSTALLER_URL:-https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh}"
+INSTALLER_URL="${INSTALLER_URL:-https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/install.sh}"
 PIN_VERSION="${PIN_VERSION:-}"
 
 WORKDIR=$(mktemp -d)

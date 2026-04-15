@@ -15,13 +15,13 @@ brew install cashop-tech/tap/cashop
 ### Shell installer
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/install.sh | bash
 ```
 
 Pin a specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh \
+curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/install.sh \
   | CASHOP_CLI_VERSION=0.1.0 bash
 ```
 

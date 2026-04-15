@@ -20,7 +20,7 @@ jobs:
           node-version: 20
       - name: Install via install.sh
         run: |
-          curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh | bash
+          curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/install.sh | bash
           "$HOME/.cashop/bin/cashop" --version
 
   homebrew:

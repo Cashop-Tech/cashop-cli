@@ -96,7 +96,7 @@ brew install cashop-tech/tap/cashop
 ### Shell installer
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/install.sh | bash
 ```
 FOOTER
           } > release_notes.md
