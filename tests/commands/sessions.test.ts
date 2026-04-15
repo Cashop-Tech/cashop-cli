@@ -20,11 +20,9 @@ function makeCtx() {
 
 describe('cashop sessions', () => {
   it('lists via GET /ai/cashop-ai/rpc/auth/sessions', async () => {
+    // cashop-ai returns bare JSON (no envelope); sessions.ts uses `raw: true`
     server.use(http.get('http://tgw/ai/cashop-ai/rpc/auth/sessions', () =>
-      HttpResponse.json({
-        code: '00000', success: true, message: '', extAttrs: null,
-        data: { sessions: [{ session_id: 'A', title: 'Alpha' }] },
-      })));
+      HttpResponse.json({ sessions: [{ session_id: 'A', title: 'Alpha' }] })));
     const program = new Command();
     (program as any).__ctx = makeCtx();
     sessionsCmd.register(program);
@@ -43,11 +41,10 @@ describe('cashop sessions', () => {
 describe('cashop session rm', () => {
   it('calls DELETE with --yes to skip confirm', async () => {
     let gotDelete = false;
+    // cashop-ai DELETE returns bare {"success":true}; session.ts uses `raw: true`
     server.use(http.delete('http://tgw/ai/cashop-ai/rpc/auth/sessions/sid1', () => {
       gotDelete = true;
-      return HttpResponse.json({
-        code: '00000', success: true, message: '', extAttrs: null, data: null,
-      });
+      return HttpResponse.json({ success: true });
     }));
     const program = new Command();
     (program as any).__ctx = { ...makeCtx(), flags: { yes: true } };

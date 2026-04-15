@@ -14,7 +14,7 @@ const mod: CommandModule = {
         const ctx = getCtx(this as unknown as Command);
         const code = await runCmd(ctx, async () => {
           const res = await gatewayRequest<SessionListResponse>(ctx.baseUrl, LIST_PATH, {
-            method: 'GET', provider: ctx.provider,
+            method: 'GET', provider: ctx.provider, raw: true,
           });
           // `format()` 对 object 会打印键值两行表，UX 差；这里 unwrap 成数组让它走 array 分支
           // pretty 模式得到 cli-table3 表格；json 模式依旧是顶层数组（脚本友好）

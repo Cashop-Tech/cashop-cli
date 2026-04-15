@@ -21,7 +21,7 @@ const mod: CommandModule = {
           });
           if (!ok) return { ok: false, reason: 'user-cancelled' };
           await gatewayRequest<unknown>(ctx.baseUrl, `${BASE}${encodeURIComponent(sessionId)}`, {
-            method: 'DELETE', provider: ctx.provider,
+            method: 'DELETE', provider: ctx.provider, raw: true,
           });
           return { ok: true, deleted: sessionId };
         });

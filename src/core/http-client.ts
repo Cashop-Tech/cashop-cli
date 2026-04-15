@@ -17,6 +17,9 @@ export interface RequestOpts {
   timeoutMs?: number;
   /** default headers injected on every call; command-level `headers` merge on top */
   defaults?: Record<string, string>;
+  /** when true, skip cashop envelope parsing and return the parsed JSON body directly.
+   *  cashop-ai endpoints under /ai/cashop-ai/rpc/auth/* return bare JSON (no {code,success,data}) */
+  raw?: boolean;
 }
 
 interface Envelope<T> { code: string; success: boolean; message: string; data: T | null; extAttrs?: unknown; }
@@ -55,6 +58,12 @@ export async function gatewayRequest<T = unknown>(base: string, path: string, op
       const tok = opts.provider ? await opts.provider.getAccessToken() : null;
       const res = await run(tok);
       if (!res.ok) await throwHttp(res); // 5xx or unusual 4xx not covered by envelope
+      if (opts.raw) {
+        const text = await res.text();
+        if (!text) return undefined as unknown as T;
+        try { return JSON.parse(text) as T; }
+        catch { throw new HttpError(res.status, text); }
+      }
       const env = await parseEnvelope<T>(res);
       if (env.success && env.code === '00000') return env.data as T;
       // Business failure with HTTP 200 envelope
