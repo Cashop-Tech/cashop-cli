@@ -3,19 +3,23 @@
 # Not in CI — requires human to open the browser and approve.
 set -eu
 
-BASE="${BASE:-http://159.138.7.47:8989}"
+CLI="node dist/entry.js"
+export CASHOP_CLI_BACKEND="${CASHOP_CLI_BACKEND:-file}"
+export HOME="${SMOKE_HOME:-$(mktemp -d -t cashop-cli-p4-smoke-XXXXXX)}"
+echo "Using HOME=$HOME  CASHOP_CLI_BACKEND=$CASHOP_CLI_BACKEND"
 
+echo
 echo "[1/3] cashop login --device --no-browser"
-echo "Follow the printed URL and user_code. Script waits for poll to succeed."
-CASHOP_CLI_BACKEND=file pnpm run dev -- --env stable login --device --no-browser
+echo "Follow the printed URL and user_code in a browser. Script waits for poll to succeed."
+$CLI --env stable login --device --no-browser
 
 echo
 echo "[2/3] cashop whoami — expect kind:oauth-device"
-pnpm run dev -- --env stable whoami
+$CLI --env stable --json whoami
 
 echo
 echo "[3/3] cashop search foo — expect 200 (CLI token → gateway → cashop-member chain)"
-pnpm run dev -- --env stable search foo
+$CLI --env stable --json search foo --page-size 1 >/dev/null
 
 echo
 echo "ALL 3 STEPS PASSED"
