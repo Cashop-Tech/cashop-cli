@@ -20,6 +20,9 @@ importers:
       kleur:
         specifier: ^4.1.5
         version: 4.1.5
+      shell-quote:
+        specifier: ^1.8.3
+        version: 1.8.3
       yaml:
         specifier: ^2.5.1
         version: 2.8.3
@@ -30,6 +33,9 @@ importers:
       '@types/node':
         specifier: ^20.14.10
         version: 20.19.39
+      '@types/shell-quote':
+        specifier: ^1.7.5
+        version: 1.7.5
       msw:
         specifier: ^2.3.5
         version: 2.13.3(@types/node@20.19.39)(typescript@5.9.3)
@@ -525,6 +531,9 @@ packages:
   '@types/node@20.19.39':
     resolution: {integrity: sha512-orrrD74MBUyK8jOAD/r0+lfa1I2MO6I+vAkmAWzMYbCcgrN4lCrmK52gRFQq/JRxfYPfonkr4b0jcY7Olqdqbw==}
 
+  '@types/shell-quote@1.7.5':
+    resolution: {integrity: sha512-+UE8GAGRPbJVQDdxi16dgadcBfQ+KG2vgZhV1+3A1XmHbmwcdwhCUwIdy+d3pAGrbvgRoVSjeI9vOWyq376Yzw==}
+
   '@types/statuses@2.0.6':
     resolution: {integrity: sha512-xMAgYwceFhRA2zY+XbEA7mxYbA093wdiW8Vu6gZPGWy9cmOyU9XesH1tNcEWsKFd5Vzrqx5T3D38PWx1FIIXkA==}
 
@@ -837,6 +846,10 @@ packages:
     resolution: {integrity: sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA==}
     engines: {node: '>=10'}
     hasBin: true
+
+  shell-quote@1.8.3:
+    resolution: {integrity: sha512-ObmnIF4hXNg1BqhnHmgbDETF8dLPCggZWBjkQfhZpbszZnYur5DUljTcCHii5LC3J5E0yeO/1LIMyH+UvHQgyw==}
+    engines: {node: '>= 0.4'}
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
@@ -1331,6 +1344,8 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
+  '@types/shell-quote@1.7.5': {}
+
   '@types/statuses@2.0.6': {}
 
   '@vitest/expect@2.1.9':
@@ -1698,6 +1713,8 @@ snapshots:
   safe-buffer@5.2.1: {}
 
   semver@7.7.4: {}
+
+  shell-quote@1.8.3: {}
 
   siginfo@2.0.0: {}
 
