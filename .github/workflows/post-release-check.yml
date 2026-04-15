@@ -1,0 +1,34 @@
+name: Post-release install check
+
+on:
+  release:
+    types: [released]
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+jobs:
+  install-sh:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install via install.sh
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh | bash
+          "$HOME/.cashop/bin/cashop" --version
+
+  homebrew:
+    runs-on: macos-latest
+    steps:
+      - name: Install via Homebrew
+        run: |
+          brew tap cashop-tech/tap
+          brew install cashop-tech/tap/cashop
+          cashop --version
+          brew test cashop-tech/tap/cashop

@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*-rc.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Extract version
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package.json version matches tag
+        run: |
+          pkg_ver=$(node -p "require('./package.json').version")
+          if [ "$pkg_ver" != "${{ steps.ver.outputs.version }}" ]; then
+            echo "::error::package.json version ($pkg_ver) does not match tag (${{ steps.ver.outputs.version }})"
+            exit 1
+          fi
+
+      - name: Pack tarball
+        run: |
+          mkdir -p release
+          tar -czf "release/cashop-cli-${{ steps.ver.outputs.version }}.tar.gz" \
+              dist/ package.json pnpm-lock.yaml README.md CHANGELOG.md
+          cd release
+          sha256sum "cashop-cli-${{ steps.ver.outputs.version }}.tar.gz" \
+              > "cashop-cli-${{ steps.ver.outputs.version }}.sha256"
+
+      - name: Detect prerelease
+        id: pre
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == *-rc.* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Smoke-test the tarball
+        run: |
+          set -e
+          mkdir smoke && cd smoke
+          tar -xzf "../release/cashop-cli-${{ steps.ver.outputs.version }}.tar.gz"
+          npm install --omit=dev --no-audit --no-fund --loglevel=error
+          out=$(node dist/entry.js --version)
+          case "$out" in
+            *"${{ steps.ver.outputs.version }}"*) ;;
+            *)
+              echo "::error::tarball version mismatch (got '$out', expected '${{ steps.ver.outputs.version }}')"
+              exit 1
+              ;;
+          esac
+
+      - name: Build release notes
+        run: |
+          {
+            ./scripts/extract-changelog.sh "${{ steps.ver.outputs.version }}"
+            cat <<'FOOTER'
+
+## Installation
+
+### Homebrew
+
+```bash
+brew install cashop-tech/tap/cashop
+```
+
+### Shell installer
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh | bash
+```
+FOOTER
+          } > release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          body_path: release_notes.md
+          prerelease: ${{ steps.pre.outputs.prerelease == 'true' }}
+          fail_on_unmatched_files: true
+
+      - name: Bump Homebrew formula
+        if: steps.pre.outputs.prerelease == 'false'
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: ./scripts/bump-homebrew-formula.sh "${{ steps.ver.outputs.version }}"

@@ -1,0 +1,46 @@
+name: Verify Homebrew Tap Token
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check token presence
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "::error::HOMEBREW_TAP_TOKEN secret is missing"
+            exit 1
+          fi
+          echo "token secret present (length=${#TAP_TOKEN})"
+
+      - name: Clone homebrew-tap repo
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/Cashop-Tech/homebrew-tap.git" tap
+          cd tap
+          git config user.name  "cashop-cli-bot"
+          git config user.email "cashop-cli-bot@users.noreply.github.com"
+          echo "clone OK, HEAD: $(git rev-parse --short HEAD)"
+
+      - name: Dry-run commit + push + revert
+        working-directory: tap
+        run: |
+          set -e
+          marker=".verify-$(date +%s)"
+          echo "verify run at $(date -u)" > "$marker"
+          git add "$marker"
+          git commit -m "chore: verify PAT (will be reverted)"
+          git push
+          echo "::notice::push succeeded — PAT has write access"
+          git rm "$marker"
+          git commit -m "chore: revert verify marker"
+          git push
+          echo "::notice::revert pushed — tap repo is clean"
+
+      - name: Result
+        run: echo "HOMEBREW_TAP_TOKEN works end-to-end"
