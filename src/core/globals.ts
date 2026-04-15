@@ -23,6 +23,7 @@ export interface CliContext {
   logger: Logger;
   flags: GlobalFlags;
   outputMode: 'pretty' | 'json';
+  homeDir: string;
 }
 
 export async function buildContext(input: {
@@ -49,5 +50,6 @@ export async function buildContext(input: {
     env, config, baseUrl: base, store, provider, logger,
     flags: input.flags,
     outputMode: input.flags.json ? 'json' : config.output,
+    homeDir: input.homeDir,
   };
 }
