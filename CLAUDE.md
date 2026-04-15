@@ -89,11 +89,31 @@ Friendly errors (see `src/core/errors.ts`):
 Smoke: `scripts/smoke-apikey.sh` — login via device, create, list, call
 search via `--api-key`, assert `lastUsedAt` updated, revoke, list empty.
 
+## P6 distribution (2026-04-15)
+
+Path C: Node tarball + on-device `npm install`. No npm registry publish, no Bun binary.
+
+- Release trigger: push tag `v*.*.*` (stable) or `v*.*.*-rc.*` (prerelease) → `.github/workflows/release.yml`
+- Artifacts: `cashop-cli-<ver>.tar.gz` (dist/ + package.json + pnpm-lock.yaml + README + CHANGELOG) + `.sha256`
+- Homebrew tap auto-bumped by `scripts/bump-homebrew-formula.sh` (stable only) → `Cashop-Tech/homebrew-tap`
+- Shell installer: `install.sh` on `release` branch, served via `raw.githubusercontent.com`
+- Post-release verification: manually dispatch `.github/workflows/post-release-check.yml` (matrix: ubuntu + macos for install.sh, macos for brew)
+
+Versioning:
+- `src/entry.ts` reads version from `package.json` at runtime via `createRequire(import.meta.url)` — single source of truth
+- Release CI verifies `package.json.version === tag`; mismatch fails the build
+- On `release` branch, keep `package.json` at `<next>-dev` between releases; bump to the real version when tagging
+
+Formula install block (non-obvious):
+- Tarball has no `bin/` scripts and `dist/entry.js` lacks exec bit, so `std_npm_args` + `bin.install_symlink` gives "Empty installation"
+- Current pattern: copy tarball into `libexec`, run `npm install --omit=dev` inside, write `bin/cashop` as a bash exec wrapper calling `node libexec/dist/entry.js`
+- `bump-homebrew-formula.sh` only sed-replaces url/sha256/version — does NOT touch the install block
+
 ## P0 milestone map
 
-- **This plan (P1)**: scaffold + password auth + product/cart/order commands
+- **P1**: scaffold + password auth + product/cart/order commands
 - **P2**: TUI + SSE chat + session persistence
 - **P3**: OAuth Device Code (backend + consent page)
 - **P4**: CLI wires to OAuth
 - **P5**: API Key provider + gateway unified auth
-- **P6**: install.sh + Homebrew + npm publishing pipeline
+- **P6** (done 2026-04-15): tag-driven release → GitHub Release + Homebrew tap + install.sh, no npm publish
