@@ -4,7 +4,30 @@ Official command-line interface for the Cashop platform.
 
 > Status: **early P0 development**. Not yet released — build from source.
 
-## Build from source
+## Install
+
+### Homebrew (macOS and Linux)
+
+```bash
+brew install cashop-tech/tap/cashop
+```
+
+### Shell installer
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh | bash
+```
+
+Pin a specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/main/install.sh \
+  | CASHOP_CLI_VERSION=0.1.0 bash
+```
+
+Both methods require Node.js ≥ 18. Homebrew installs Node automatically; the shell installer prints a platform-specific hint if it's missing.
+
+### Build from source
 
 ```bash
 pnpm install
@@ -78,4 +101,6 @@ Coming soon: the rest of the domain verbs, and install.sh / Homebrew / npm distr
 
 ## License
 
-UNLICENSED (private preview).
+This project is source-available but not open source. All rights reserved
+by Cashop. You may install and use the CLI under the terms of the Cashop
+platform agreement; you may not redistribute or fork the source code.
