@@ -29,4 +29,23 @@ describe('auth logout', () => {
     await program.parseAsync(['logout'], { from: 'user' });
     expect(await store.getPasswordToken('stable')).toBeNull();
   });
+
+  it('clears both oauth and password tokens for current env', async () => {
+    const store = new TokenStore(new InMemoryBackend());
+    await store.saveOAuth('stable', {
+      access_token: 'A', refresh_token: 'R',
+      expires_at: Date.now() + 1e6, refresh_expires_at: Date.now() + 1e9,
+      account: '1', scopes: ['cli'],
+    });
+    await store.savePasswordToken('stable', {
+      accessToken: 'P', refreshToken: 'PR', expires_at: Date.now() + 1e6,
+      refresh_expires_at: Date.now() + 1e9, userId: '1',
+    });
+    const program = new Command();
+    (program as any).__ctx = makeCtx(store);
+    logoutCmd.register(program);
+    await program.parseAsync(['logout'], { from: 'user' });
+    expect(await store.getOAuth('stable')).toBeNull();
+    expect(await store.getPasswordToken('stable')).toBeNull();
+  });
 });
