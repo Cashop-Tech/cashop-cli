@@ -10,6 +10,7 @@ import { loadChatState, saveLastSession } from './session.js';
 import { gatewayRequest } from '../core/http-client.js';
 import type { SessionListResponse } from '../types/chat.js';
 import { registerAll } from '../commands/index.js';
+import { selectProvider } from '../core/auth-provider/index.js';
 
 export interface StartTuiOpts {
   resume?: boolean;
@@ -28,7 +29,7 @@ async function buildBangProgram(ctx: CliContext): Promise<Command> {
     .option('--api-key <key>', 'use an API key for this invocation only');
   // 2) preAction hook 合并外层 ctx + 本次 bang 指定的 flags，写回 __ctx
   //    外层 TUI 启动时的 ctx.flags 为 base；bang 这一行用户显式带的 -y/--json/... 覆盖它
-  prog.hook('preAction', (thisCmd) => {
+  prog.hook('preAction', async (thisCmd) => {
     const opts = thisCmd.optsWithGlobals();
     const mergedFlags = {
       ...ctx.flags,
@@ -39,10 +40,23 @@ async function buildBangProgram(ctx: CliContext): Promise<Command> {
       yes: opts.yes ?? ctx.flags.yes,
       apiKey: opts.apiKey ?? ctx.flags.apiKey,
     };
+    // Re-select provider from on-disk token store each turn. ctx.provider was
+    // captured at TUI startup (likely NoProvider, before any login); if the
+    // previous turn was `!login`, the new tokens are on disk but the in-memory
+    // provider is stale. Without this, `!cart` after `!login` hits 401 and chat
+    // keeps reporting "not logged in".
+    const provider = await selectProvider({
+      env: mergedFlags.env ?? ctx.env,
+      store: ctx.store,
+      flags: { apiKey: mergedFlags.apiKey },
+      envVars: process.env as Record<string, string | undefined>,
+      base: ctx.baseUrl,
+    });
     const bangCtx: CliContext = {
       ...ctx,
       flags: mergedFlags,
       outputMode: mergedFlags.json ? 'json' : ctx.outputMode,
+      provider,
     };
     (thisCmd as any).__ctx = bangCtx;
   });
@@ -93,10 +107,20 @@ export async function startTui(ctx: CliContext, opts: StartTuiOpts = {}): Promis
           out: (s) => process.stdout.write(s),
           err: (s) => process.stderr.write(s),
           state,
-          listSessions: async () => gatewayRequest<SessionListResponse>(
-            ctx.baseUrl, '/ai/cashop-ai/rpc/auth/sessions',
-            { method: 'GET', provider: ctx.provider },
-          ),
+          listSessions: async () => {
+            // Same reason as chat/bang: re-select provider so /sessions after
+            // !login uses the freshly-written token, not startup NoProvider.
+            const provider = await selectProvider({
+              env: ctx.env, store: ctx.store,
+              flags: { apiKey: ctx.flags.apiKey },
+              envVars: process.env as Record<string, string | undefined>,
+              base: ctx.baseUrl,
+            });
+            return gatewayRequest<SessionListResponse>(
+              ctx.baseUrl, '/ai/cashop-ai/rpc/auth/sessions',
+              { method: 'GET', provider },
+            );
+          },
           exit: () => { exiting = true; rl.close(); },
         };
         await dispatchSlash(parsed.name, parsed.args, slashCtx);
@@ -117,7 +141,17 @@ export async function startTui(ctx: CliContext, opts: StartTuiOpts = {}): Promis
           process.stderr.write('session expired — run !login to continue\n');
           rl.prompt(); return;
         }
-        const token = await ctx.provider.getAccessToken?.();
+        // Re-select on every chat turn: ctx.provider was captured at startup
+        // (pre-login = NoProvider). A prior !login wrote tokens to store, so
+        // we pick them up here. Also keeps a refresh path alive across turns.
+        const provider = await selectProvider({
+          env: ctx.env,
+          store: ctx.store,
+          flags: { apiKey: ctx.flags.apiKey },
+          envVars: process.env as Record<string, string | undefined>,
+          base: ctx.baseUrl,
+        });
+        const token = await provider.getAccessToken?.();
         if (!token) { process.stderr.write('not logged in — run !login first\n'); rl.prompt(); return; }
         const sinks = {
           out: (s: string) => process.stdout.write(s),

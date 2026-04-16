@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Changed
+## [0.1.1] - 2026-04-16
 
-- Dev version bumped to 0.2.0-dev; next release target TBD
+### Fixed
+
+- TUI: after `!login` the in-memory auth provider was stale (captured at startup
+  before any login), so subsequent `!cart` / `/sessions` / chat kept returning
+  401 or "not logged in". Now re-selects provider from on-disk token store on
+  every bang, slash, and chat turn.
 
 ## [0.1.0] - 2026-04-15
 
