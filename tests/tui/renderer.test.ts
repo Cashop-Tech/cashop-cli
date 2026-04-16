@@ -56,4 +56,46 @@ describe('renderEvent', () => {
     expect(out.length).toBe(0);
     expect(err.length).toBe(0);
   });
+
+  it('products event renders numbered list with title/price/spu', () => {
+    const { sinks, out } = makeSinks();
+    renderEvent({
+      type: 'products',
+      scene: '通勤装',
+      one_liner: '推荐三款',
+      products: [
+        { spuCode: 'SPU1', title: '白衬衫', price: 199, currency: 'CNY' },
+        { spuCode: 'SPU2', title: '西裤', price: 299, currency: 'CNY' },
+      ],
+    }, sinks, { json: false });
+    const s = out.join('');
+    expect(s).toMatch(/通勤装/);
+    expect(s).toMatch(/\[1\] 白衬衫/);
+    expect(s).toMatch(/CNY 199/);
+    expect(s).toMatch(/spu=SPU1/);
+    expect(s).toMatch(/\[2\] 西裤/);
+  });
+
+  it('order_card renders each order line', () => {
+    const { sinks, out } = makeSinks();
+    renderEvent({
+      type: 'order_card',
+      order: { type: 'order_list', orders: [{ orderNo: 'ORD1', status: 'PAID', amount: 100 }] },
+    }, sinks, { json: false });
+    const s = out.join('');
+    expect(s).toMatch(/ORD1/);
+    expect(s).toMatch(/PAID/);
+    expect(s).toMatch(/100/);
+  });
+
+  it('onboard_options renders numbered list', () => {
+    const { sinks, out } = makeSinks();
+    renderEvent({
+      type: 'onboard_options',
+      options: [{ label: '找衣服' }, { label: '看订单' }],
+    } as any, sinks, { json: false });
+    const s = out.join('');
+    expect(s).toMatch(/\[1\] 找衣服/);
+    expect(s).toMatch(/\[2\] 看订单/);
+  });
 });

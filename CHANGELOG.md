@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-04-16
+
+### Fixed
+
+- `cart` / key-value tables: nested arrays and objects no longer collapse to
+  `[object Object]`. They render as compact JSON instead.
+
+### Added
+
+- TUI renderer now handles cashop-ai's structured SSE events:
+  `products` (product recommendation list), `product_detail`, `order_card`,
+  `onboard_options`, `promo_list`, `address_list`. Previously these were
+  silently dropped, so users only saw `text_delta` + `suggestions` even when
+  the backend was emitting product cards.
+
 ## [0.1.1] - 2026-04-16
 
 ### Fixed

@@ -23,4 +23,22 @@ describe('output.format', () => {
   it('pretty mode renders plain string unchanged', () => {
     expect(format('hello', { mode: 'pretty' })).toBe('hello');
   });
+
+  it('pretty mode stringifies nested array-of-objects as JSON (no [object Object])', () => {
+    const s = format({ items: [{ id: 1 }, { id: 2 }], total: 42 }, { mode: 'pretty' });
+    expect(s).not.toMatch(/\[object Object\]/);
+    expect(s).toContain('[{"id":1},{"id":2}]');
+    expect(s).toContain('42');
+  });
+
+  it('pretty mode stringifies nested object as JSON', () => {
+    const s = format({ meta: { a: 1, b: 'x' } }, { mode: 'pretty' });
+    expect(s).not.toMatch(/\[object Object\]/);
+    expect(s).toContain('{"a":1,"b":"x"}');
+  });
+
+  it('pretty mode renders null/undefined cells as empty', () => {
+    const s = format({ a: null, b: undefined }, { mode: 'pretty' });
+    expect(s).not.toMatch(/null|undefined/);
+  });
 });
