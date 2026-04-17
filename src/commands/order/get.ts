@@ -14,14 +14,25 @@ const mod: CommandModule = {
     order
       .description('Order commands. `cashop order <orderNo>` shows details; see `cashop order --help` for subcommands.')
       .argument('[orderNo]', 'order number (when omitted and no subcommand, prints help)')
+      .option('--country <code>', 'x-country header', 'JP')
+      .option('--currency <code>', 'x-currency header', 'JPY')
+      .option('--language <code>', 'x-language header', 'ja')
       .action(async function (this: Command, orderNo: string | undefined) {
         if (!orderNo) { this.help(); return; }
         const ctx = getCtx(this as unknown as Command);
+        const opts = (this as unknown as { opts(): Record<string, string | undefined> }).opts();
         const code = await runCmd(ctx, async () =>
           await gatewayRequest<OrderDetail>(
             ctx.baseUrl,
             `${DETAIL_PATH_PREFIX}${encodeURIComponent(orderNo)}`,
-            { method: 'GET', provider: ctx.provider },
+            {
+              method: 'GET', provider: ctx.provider,
+              headers: {
+                'x-country': String(opts.country),
+                'x-currency': String(opts.currency),
+                'x-language': String(opts.language),
+              },
+            },
           ));
         if (code !== 0) process.exit(code);
       });

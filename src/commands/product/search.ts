@@ -14,6 +14,9 @@ const mod: CommandModule = {
       .description('Search products (aggregated catalogue)')
       .option('--page <n>', 'page number (1-based)', '1')
       .option('--page-size <n>', 'items per page (1-50)', '10')
+      .option('--country <code>', 'x-country header', 'JP')
+      .option('--currency <code>', 'x-currency header', 'JPY')
+      .option('--language <code>', 'x-language header', 'ja')
       .action(async function (this: Command, keyword: string) {
         const ctx = getCtx(this as unknown as Command);
         const opts = (this as any).opts();
@@ -33,6 +36,11 @@ const mod: CommandModule = {
                 pageNum,
               },
               pageSize,
+            },
+            headers: {
+              'x-country': String(opts.country),
+              'x-currency': String(opts.currency),
+              'x-language': String(opts.language),
             },
           });
         });

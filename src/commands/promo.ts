@@ -30,17 +30,18 @@ const mod: CommandModule = {
           pageIndex: Number(opts.page),
           pageSize: Number(opts.pageSize),
         };
-        const tok = await ctx.provider.getAccessToken();
-        const path = tok ? AUTH_PATH : OPEN_PATH;
-        const code = await runCmd(ctx, async () =>
-          await gatewayRequest<PromoListData>(ctx.baseUrl, path, {
+        const code = await runCmd(ctx, async () => {
+          const tok = await ctx.provider.getAccessToken();
+          const path = tok ? AUTH_PATH : OPEN_PATH;
+          return await gatewayRequest<PromoListData>(ctx.baseUrl, path, {
             method: 'POST', provider: ctx.provider, body,
             headers: {
               'x-country': String(opts.country),
               'x-currency': String(opts.currency),
               'x-language': String(opts.language),
             },
-          }));
+          });
+        });
         if (code !== 0) process.exit(code);
       });
   },
