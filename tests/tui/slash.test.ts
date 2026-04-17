@@ -1,5 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
+import type { Command } from 'commander';
 import { dispatchSlash, type SlashCtx } from '../../src/tui/slash/index.js';
+import { buildBangShape } from '../../src/tui/verb-catalog.js';
+
+let bangProg: Command;
+beforeAll(async () => { bangProg = await buildBangShape(); });
 
 function makeCtx(overrides: Partial<SlashCtx> = {}): SlashCtx {
   return {
@@ -11,6 +16,7 @@ function makeCtx(overrides: Partial<SlashCtx> = {}): SlashCtx {
       { session_id: 'B', title: null, updated_at: '2026-04-15' },
     ]}),
     exit: vi.fn(),
+    bangProg,
     ...overrides,
   };
 }

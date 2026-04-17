@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-04-17
+
+### Added
+
+- 3 new shell-parity verbs ported from `cashop-ai/cli/consumer/`:
+  `recommend <spuCode>` (related-product recommendations, open endpoint),
+  `pay checkout` (execute cashier-mode payment for a prepay), and
+  `pay info <paymentTradeNo>` (query receivableAmount for a prepay).
+- TUI bang auto-completion: `!<Tab>` lists all top-level verbs; `!pay <Tab>`
+  lists `checkout | info | methods`. Powered by a shape-only commander
+  program built once at TUI startup.
+- `/help` now auto-enumerates the full bang command tree (25 top-level
+  verbs + 13 subcommands) instead of the hand-maintained 9-line list that
+  had drifted behind registration.
+
 ## [0.1.3] - 2026-04-17
 
 ### Added

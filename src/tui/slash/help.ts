@@ -1,7 +1,8 @@
 import type { SlashCtx } from './index.js';
+import { renderBangHelp } from '../verb-catalog.js';
 
 export async function helpSlash(_args: string[], ctx: SlashCtx): Promise<void> {
-  ctx.out([
+  const lines = [
     'Slash commands:',
     '  /help            Show this message',
     '  /new             Start a new chat session',
@@ -9,10 +10,10 @@ export async function helpSlash(_args: string[], ctx: SlashCtx): Promise<void> {
     '  /resume <id>     Switch to a specific session',
     '  /exit            Quit (same as Ctrl-D)',
     '',
-    'Bang commands (runs a shell subcommand):',
-    '  !login / !logout / !whoami',
-    '  !search <kw> / !product <spu>',
-    '  !cart / !cart add / !orders / !order <no>',
+    renderBangHelp(ctx.bangProg),
     '',
-  ].join('\n'));
+    'Tab completes !verb and the first subcommand level.',
+    '',
+  ];
+  ctx.out(lines.join('\n'));
 }

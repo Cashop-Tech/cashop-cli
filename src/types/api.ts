@@ -335,6 +335,41 @@ export interface ShippingCompareRequest {
 
 export type ShippingCompareData = Record<string, unknown>;
 
+// POST /business/cashop-business-aggr-prod/open/product/recommend
+// Captured 2026-04-17 from cashop-ai/cli/consumer/cashop-product
+// (gateway_post prepends the /business/cashop-business-aggr-prod/open prefix).
+// Open endpoint (no auth) — mirrors cashop-product's gateway_post, not gateway_auth_post.
+// Returns related-product recommendations for a given SPU.
+export interface RecommendRequest {
+  pageIndex: number;
+  pageSize: number;
+  scene: string;                 // e.g. "product_detail"
+  searchRequestId: string;       // cli-originated unique id for telemetry
+  spuCodes: string[];
+}
+
+// Kept opaque — response list item shape overlaps ProductSummary but lacks some fields
+// (no productNum); downstream consumers parse selectively.
+export type RecommendData = Record<string, unknown>;
+
+// POST /fin/cashop-fin-prod/api/finance/cashier/payFromCheckout
+// Captured 2026-04-17 from cashop-ai/cli/consumer/cashop-pay-from-checkout.
+// Executes the actual charge after prepay: caller supplies the paymentTradeNo
+// returned by `cashop pay`, the selected payChannel, and the expected totalAmount.
+export interface PayFromCheckoutRequest {
+  paymentTradeNo: string;
+  payChannel: string;            // e.g. "GMO_PAY" / "BALANCE_PAYMENT" / "STRIPE_PAY" / "AEON_PAY"
+  totalAmount: number;
+  currency: string;
+}
+
+export type PayFromCheckoutData = Record<string, unknown>;
+
+// GET /fin/cashop-fin-prod/api/finance/cashier/queryPaymentInfo?paymentTradeNo=<id>
+// Captured 2026-04-17 from cashop-ai/cli/consumer/cashop-query-payment-info.
+// Supplies receivableAmount etc. to pre-charge sanity-check an outstanding payment.
+export type PaymentInfoData = Record<string, unknown>;
+
 // ---- P5 api-key ----
 
 export type ApiKeyTtl = '30d' | '90d' | '1y' | 'never';

@@ -1,3 +1,4 @@
+import type { Command } from 'commander';
 import type { SessionListResponse } from '../../types/chat.js';
 import { helpSlash } from './help.js';
 import { newSlash } from './new.js';
@@ -16,6 +17,7 @@ export interface SlashCtx {
   state: TuiState;
   listSessions: () => Promise<SessionListResponse>;
   exit: () => void;
+  bangProg: Command;   // shape-only program for /help rendering
 }
 
 const REGISTRY: Record<string, (args: string[], ctx: SlashCtx) => Promise<void>> = {

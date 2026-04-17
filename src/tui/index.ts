@@ -11,6 +11,7 @@ import { gatewayRequest } from '../core/http-client.js';
 import type { SessionListResponse } from '../types/chat.js';
 import { registerAll, loadCommandModules } from '../commands/index.js';
 import { selectProvider } from '../core/auth-provider/index.js';
+import { buildBangShape, completeBang } from './verb-catalog.js';
 
 export interface StartTuiOpts {
   resume?: boolean;
@@ -71,7 +72,11 @@ export async function startTui(ctx: CliContext, opts: StartTuiOpts = {}): Promis
     state.current_session_id = loadChatState(ctx.homeDir).last_session_id;
   }
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '> ' });
+  const bangShape = await buildBangShape();
+  const rl = createInterface({
+    input: process.stdin, output: process.stdout, prompt: '> ',
+    completer: (line: string) => completeBang(line, bangShape),
+  });
   let exiting = false;
 
   process.stdout.write([
@@ -107,6 +112,7 @@ export async function startTui(ctx: CliContext, opts: StartTuiOpts = {}): Promis
             );
           },
           exit: () => { exiting = true; rl.close(); },
+          bangProg: bangShape,
         };
         await dispatchSlash(parsed.name, parsed.args, slashCtx);
       }
