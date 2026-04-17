@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-04-17
+
+### Added
+
+- 17 new shell-parity verbs ported from `cashop-ai/cli/consumer/`:
+  `cart split`, `cart count`, `order create`, `order cancel`, `order address`,
+  `address list`, `address save`, `refund apply`, `track`, `shipping compare`,
+  `size`, `promo`, `coupon claim`, `pay`, `pay-methods`, `checkout fee`,
+  `checkout split`.
+
+### Fixed
+
+- Locale header defaults now match shell consumer (`x-country: JP`,
+  `x-currency: JPY`, `x-language: ja`). Previously 11 commands fell back to
+  `http-client`'s `en` default, producing divergent gateway responses.
+- `promo` now routes unauthenticated callers to `/open/cms/v2/activity/...`
+  instead of the auth path, matching shell's dual-path behavior.
+- `ask` command: `getAccessToken()` moved inside try/catch; "not logged in"
+  now flows through `ReauthRequired` + `exitCodeFor` for consistent exit
+  codes with the rest of the CLI.
+- `refund apply`: invalid `--as-type` / `--reason-code` now exits with code 2
+  (bad args) instead of 1.
+- TUI bang (`!cmd`) now exposes all 34 P1+ verbs. Previously only 13
+  were registered, so `!promo`, `!refund apply`, `!order cancel` etc.
+  silently returned "unknown command".
+
 ## [0.1.2] - 2026-04-16
 
 ### Fixed
