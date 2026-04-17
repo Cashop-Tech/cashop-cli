@@ -10,10 +10,12 @@ const DETAIL_PATH_PREFIX = '/trade/cashop-order-prod/api/order/';
 
 const mod: CommandModule = {
   register(program: Command) {
-    program
-      .command('order <orderNo>')
-      .description('Show order details (requires login)')
-      .action(async function (this: Command, orderNo: string) {
+    const order = ensureGroup(program, 'order');
+    order
+      .description('Order commands. `cashop order <orderNo>` shows details; see `cashop order --help` for subcommands.')
+      .argument('[orderNo]', 'order number (when omitted and no subcommand, prints help)')
+      .action(async function (this: Command, orderNo: string | undefined) {
+        if (!orderNo) { this.help(); return; }
         const ctx = getCtx(this as unknown as Command);
         const code = await runCmd(ctx, async () =>
           await gatewayRequest<OrderDetail>(
@@ -26,3 +28,7 @@ const mod: CommandModule = {
   },
 };
 export default mod;
+
+function ensureGroup(program: Command, name: string): Command {
+  return program.commands.find(c => c.name() === name) ?? program.command(name);
+}
