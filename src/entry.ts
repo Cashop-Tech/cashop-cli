@@ -4,49 +4,10 @@ import { homedir } from 'node:os';
 import { createRequire } from 'node:module';
 import { buildContext, type GlobalFlags } from './core/globals.js';
 import { exitCodeFor } from './core/errors.js';
-import { registerAll } from './commands/index.js';
+import { registerAll, loadCommandModules } from './commands/index.js';
 import { startTui } from './tui/index.js';
 
 const pkg = createRequire(import.meta.url)('../package.json') as { version: string };
-
-async function loadModules() {
-  return [
-    (await import('./commands/auth/login.js')).default,
-    (await import('./commands/auth/logout.js')).default,
-    (await import('./commands/auth/whoami.js')).default,
-    (await import('./commands/config/config.js')).default,
-    (await import('./commands/config/env.js')).default,
-    (await import('./commands/product/search.js')).default,
-    (await import('./commands/product/get.js')).default,
-    (await import('./commands/cart/list.js')).default,
-    (await import('./commands/cart/add.js')).default,
-    (await import('./commands/cart/split.js')).default,
-    (await import('./commands/cart/count.js')).default,
-    (await import('./commands/order/list.js')).default,
-    (await import('./commands/order/get.js')).default,
-    (await import('./commands/order/create.js')).default,
-    (await import('./commands/order/cancel.js')).default,
-    (await import('./commands/order/address.js')).default,
-    (await import('./commands/address/list.js')).default,
-    (await import('./commands/address/save.js')).default,
-    (await import('./commands/refund/apply.js')).default,
-    (await import('./commands/track.js')).default,
-    (await import('./commands/shipping/compare.js')).default,
-    (await import('./commands/size.js')).default,
-    (await import('./commands/promo.js')).default,
-    (await import('./commands/coupon/claim.js')).default,
-    (await import('./commands/pay.js')).default,
-    (await import('./commands/pay-methods.js')).default,
-    (await import('./commands/checkout/fee.js')).default,
-    (await import('./commands/checkout/split.js')).default,
-    (await import('./commands/apikey/create.js')).default,
-    (await import('./commands/apikey/list.js')).default,
-    (await import('./commands/apikey/rm.js')).default,
-    (await import('./commands/ask.js')).default,
-    (await import('./commands/sessions.js')).default,
-    (await import('./commands/session.js')).default,
-  ];
-}
 
 /**
  * TUI 分支判定：剥离非 positional 的全局 flag 后，若只剩 0 个或只剩一个 `--resume`，走 TUI。
@@ -128,7 +89,7 @@ async function main(argv: string[]): Promise<number> {
       (thisCmd as unknown as { __ctx: unknown }).__ctx = ctx;
     });
 
-  registerAll(program, await loadModules());
+  registerAll(program, await loadCommandModules());
 
   try {
     await program.parseAsync(argv);

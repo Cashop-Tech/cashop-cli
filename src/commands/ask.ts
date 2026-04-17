@@ -4,7 +4,7 @@ import { getCtx } from './_helpers.js';
 import { streamChat } from '../core/sse-client.js';
 import { renderEvent } from '../tui/renderer.js';
 import { loadChatState, saveLastSession } from '../tui/session.js';
-import { NetworkError, BusinessError } from '../core/errors.js';
+import { ReauthRequired, BusinessError, exitCodeFor, friendlyBusinessMessage } from '../core/errors.js';
 
 const mod: CommandModule = {
   register(program: Command) {
@@ -20,9 +20,6 @@ const mod: CommandModule = {
         if (!sessionId && opts.resume) {
           sessionId = loadChatState(ctx.homeDir).last_session_id;
         }
-        const token = await ctx.provider.getAccessToken?.();
-        if (!token) { process.stderr.write('not logged in\n'); process.exit(4); }
-
         const sinks = {
           out: (s: string) => process.stdout.write(s),
           err: (s: string) => process.stderr.write(s),
@@ -31,6 +28,9 @@ const mod: CommandModule = {
         const color = !ctx.flags.noColor && process.stdout.isTTY !== false;
 
         try {
+          const token = await ctx.provider.getAccessToken?.();
+          if (!token) throw new ReauthRequired();
+
           let lastError = false;
           for await (const ev of streamChat({
             base: ctx.baseUrl, token,
@@ -45,10 +45,13 @@ const mod: CommandModule = {
           if (!json) process.stdout.write('\n');
           if (lastError) process.exit(1);
         } catch (e) {
-          process.stderr.write(`${e instanceof Error ? e.message : String(e)}\n`);
-          if (e instanceof NetworkError) process.exit(3);
-          if (e instanceof BusinessError) process.exit(1);
-          process.exit(1);
+          const msg = e instanceof ReauthRequired
+            ? 'not logged in'
+            : e instanceof BusinessError
+              ? friendlyBusinessMessage(e.code, e.message)
+              : e instanceof Error ? e.message : String(e);
+          process.stderr.write(`${msg}\n`);
+          process.exit(exitCodeFor(e));
         }
       });
   },

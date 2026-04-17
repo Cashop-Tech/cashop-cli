@@ -2,6 +2,7 @@ import type { Command } from 'commander';
 import type { CommandModule } from '../index.js';
 import { getCtx, runCmd } from '../_helpers.js';
 import { gatewayRequest } from '../../core/http-client.js';
+import { BadArgsError } from '../../core/errors.js';
 import type {
   AftersaleReason, AftersaleType, RefundApplyData, RefundApplyRequest,
 } from '../../types/api.js';
@@ -39,11 +40,11 @@ const mod: CommandModule = {
 
         const asType = Number(opts.asType);
         if (!AS_TYPES.includes(asType as AftersaleType)) {
-          throw new Error(`--as-type must be one of: ${AS_TYPES.join(', ')}`);
+          throw new BadArgsError(`--as-type must be one of: ${AS_TYPES.join(', ')}`);
         }
         const reasonCode = Number(opts.reasonCode);
         if (!REASON_CODES.includes(reasonCode as AftersaleReason)) {
-          throw new Error(`--reason-code must be one of: ${REASON_CODES.join(', ')}`);
+          throw new BadArgsError(`--reason-code must be one of: ${REASON_CODES.join(', ')}`);
         }
 
         const body: RefundApplyRequest = {

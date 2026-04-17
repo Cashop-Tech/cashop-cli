@@ -32,8 +32,9 @@ const mod: CommandModule = {
         const code = await runCmd(ctx, async () =>
           await gatewayRequest<ShippingCompareData>(ctx.baseUrl, SHIPPING_PATH, {
             method: 'POST', provider: ctx.provider, body,
-            // Shell hardcodes gateway_auth_post header defaults (JP/JPY/ja);
-            // no CLI override since --country is already the body's destinationCountry.
+            // Headers intentionally hardcoded to match shell consumer (gateway_auth_post
+            // defaults JP/JPY/ja). --country here is the parcel destination
+            // (body.destinationCountry), not the tenant context (x-country header).
             headers: { 'x-country': 'JP', 'x-currency': 'JPY', 'x-language': 'ja' },
           }));
         if (code !== 0) process.exit(code);

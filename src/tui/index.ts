@@ -9,7 +9,7 @@ import { streamChat } from '../core/sse-client.js';
 import { loadChatState, saveLastSession } from './session.js';
 import { gatewayRequest } from '../core/http-client.js';
 import type { SessionListResponse } from '../types/chat.js';
-import { registerAll } from '../commands/index.js';
+import { registerAll, loadCommandModules } from '../commands/index.js';
 import { selectProvider } from '../core/auth-provider/index.js';
 
 export interface StartTuiOpts {
@@ -60,23 +60,8 @@ async function buildBangProgram(ctx: CliContext): Promise<Command> {
     };
     (thisCmd as any).__ctx = bangCtx;
   });
-  // Dynamically register the same modules as entry.ts
-  const modules = [
-    (await import('../commands/auth/login.js')).default,
-    (await import('../commands/auth/logout.js')).default,
-    (await import('../commands/auth/whoami.js')).default,
-    (await import('../commands/config/config.js')).default,
-    (await import('../commands/config/env.js')).default,
-    (await import('../commands/product/search.js')).default,
-    (await import('../commands/product/get.js')).default,
-    (await import('../commands/cart/list.js')).default,
-    (await import('../commands/cart/add.js')).default,
-    (await import('../commands/order/list.js')).default,
-    (await import('../commands/order/get.js')).default,
-    (await import('../commands/sessions.js')).default,
-    (await import('../commands/session.js')).default,
-  ];
-  registerAll(prog, modules);
+  // Share the full module list with entry.ts so every P1+ verb is available via bang.
+  registerAll(prog, await loadCommandModules());
   return prog;
 }
 
