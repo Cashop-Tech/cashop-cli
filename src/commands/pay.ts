@@ -20,6 +20,9 @@ const mod: CommandModule = {
       .argument('[orderGroupNo]', 'order group number (when omitted and no subcommand, prints help)')
       .option('--return-url <url>', 'URL to redirect to after payment succeeds', DEFAULT_RETURN)
       .option('--cancel-url <url>', 'URL to redirect to when payment is cancelled', DEFAULT_CANCEL)
+      .option('--country <code>', 'x-country header', 'JP')
+      .option('--currency <code>', 'x-currency header', 'JPY')
+      .option('--language <code>', 'x-language header', 'ja')
       .action(async function (this: Command, orderGroupNo: string | undefined) {
         if (!orderGroupNo) { this.help(); return; }
         const ctx = getCtx(this as unknown as Command);
@@ -32,6 +35,11 @@ const mod: CommandModule = {
         const code = await runCmd(ctx, async () =>
           await gatewayRequest<PrepayData>(ctx.baseUrl, PREPAY_PATH, {
             method: 'POST', provider: ctx.provider, body,
+            headers: {
+              'x-country': String(opts.country),
+              'x-currency': String(opts.currency),
+              'x-language': String(opts.language),
+            },
           }));
         if (code !== 0) process.exit(code);
       });

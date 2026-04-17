@@ -15,6 +15,9 @@ const mod: CommandModule = {
       .requiredOption('--address-id <id>', 'delivery address id')
       .option('--line-code <code>', 'specific shipping line code (optional)')
       .option('--outer-pkg <code>', 'outer package code', 'DEFAULT')
+      .option('--country <code>', 'x-country header', 'JP')
+      .option('--currency <code>', 'x-currency header', 'JPY')
+      .option('--language <code>', 'x-language header', 'ja')
       .action(async function (this: Command) {
         const ctx = getCtx(this as unknown as Command);
         const opts = (this as unknown as { opts(): Record<string, string | undefined> }).opts();
@@ -28,6 +31,11 @@ const mod: CommandModule = {
         const code = await runCmd(ctx, async () =>
           await gatewayRequest<FeeTrialData>(ctx.baseUrl, FEE_TRIAL_PATH, {
             method: 'POST', provider: ctx.provider, body,
+            headers: {
+              'x-country': String(opts.country),
+              'x-currency': String(opts.currency),
+              'x-language': String(opts.language),
+            },
           }));
         if (code !== 0) process.exit(code);
       });

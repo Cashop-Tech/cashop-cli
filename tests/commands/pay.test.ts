@@ -22,10 +22,12 @@ function makeCtx() {
 }
 
 describe('cashop pay', () => {
-  it('posts orderGroupNo with default return/cancel deep-link URLs', async () => {
+  it('posts orderGroupNo with default return/cancel deep-link URLs and JP/JPY/ja headers', async () => {
     let captured: Record<string, unknown> = {};
+    const capturedHeaders: Record<string, string> = {};
     server.use(http.post(PREPAY_URL, async ({ request }) => {
       captured = (await request.json()) as Record<string, unknown>;
+      request.headers.forEach((v, k) => { capturedHeaders[k] = v; });
       return HttpResponse.json({
         code: '00000', success: true, message: '成功', extAttrs: null,
         data: { paymentTradeNo: 'PTN_1', paymentUrl: '/pay?t=PTN_1' },
@@ -41,6 +43,7 @@ describe('cashop pay', () => {
       returnUrl: 'cashop://payment/success',
       cancelUrl: 'cashop://payment/cancel',
     });
+    expect(capturedHeaders['x-language']).toBe('ja');
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     expect(JSON.parse(out).paymentTradeNo).toBe('PTN_1');
     spy.mockRestore();

@@ -22,10 +22,12 @@ function makeCtx() {
 }
 
 describe('cashop checkout fee', () => {
-  it('posts CSV batch-nos as array with sortType=1 and default outer-pkg', async () => {
+  it('posts CSV batch-nos as array with sortType=1, default outer-pkg, and JP/JPY/ja headers', async () => {
     let captured: Record<string, unknown> = {};
+    const capturedHeaders: Record<string, string> = {};
     server.use(http.post(FEE_TRIAL_URL, async ({ request }) => {
       captured = (await request.json()) as Record<string, unknown>;
+      request.headers.forEach((v, k) => { capturedHeaders[k] = v; });
       return HttpResponse.json({
         code: '00000', success: true, message: '成功', extAttrs: null,
         data: { totalProductAmount: 1000, totalFreightAmount: 300, totalSettleAmount: 1430 },
@@ -45,6 +47,7 @@ describe('cashop checkout fee', () => {
       outerPackageCode: 'DEFAULT',
       sortType: 1,
     });
+    expect(capturedHeaders['x-language']).toBe('ja');
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     expect(JSON.parse(out).totalSettleAmount).toBe(1430);
     spy.mockRestore();

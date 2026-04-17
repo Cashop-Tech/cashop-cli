@@ -23,6 +23,9 @@ const mod: CommandModule = {
       .option('--dm-line-code <code>', 'direct-mail line code (required when --delivery-type DIRECT_MAIL)')
       .option('--dm-shipping-fee <fee>', 'direct-mail shipping fee (required when --delivery-type DIRECT_MAIL)')
       .option('--business-order-no <key>', 'idempotency key, format biz_{hash}')
+      .option('--country <code>', 'x-country header', 'JP')
+      .option('--currency <code>', 'x-currency header', 'JPY')
+      .option('--language <code>', 'x-language header', 'ja')
       .action(async function (this: Command) {
         const ctx = getCtx(this as unknown as Command);
         const opts = (this as unknown as { opts(): Record<string, string | number | undefined> }).opts();
@@ -61,6 +64,11 @@ const mod: CommandModule = {
           if (!ok) return { ok: false, reason: 'user-cancelled' };
           return await gatewayRequest<OrderCreateData>(ctx.baseUrl, CREATE_PATH, {
             method: 'POST', provider: ctx.provider, body,
+            headers: {
+              'x-country': String(opts.country),
+              'x-currency': String(opts.currency),
+              'x-language': String(opts.language),
+            },
           });
         });
         if (code !== 0) process.exit(code);

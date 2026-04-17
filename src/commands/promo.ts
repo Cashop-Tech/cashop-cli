@@ -4,7 +4,12 @@ import { getCtx, runCmd } from './_helpers.js';
 import { gatewayRequest } from '../core/http-client.js';
 import type { PromoListData, PromoListRequest } from '../types/api.js';
 
-const PROMO_PATH = '/marketing/cashop-marketing/cms/v2/activity/queryActivityList';
+// Shell script branches on token presence:
+//   token present → auth path (personal + public offers)
+//   no token      → open path (public offers only)
+// CLI mirrors this so unauthenticated callers don't hit a 401 from the auth path.
+const AUTH_PATH = '/marketing/cashop-marketing/cms/v2/activity/queryActivityList';
+const OPEN_PATH = '/marketing/cashop-marketing/open/cms/v2/activity/queryActivityList';
 
 const mod: CommandModule = {
   register(program: Command) {
@@ -25,8 +30,10 @@ const mod: CommandModule = {
           pageIndex: Number(opts.page),
           pageSize: Number(opts.pageSize),
         };
+        const tok = await ctx.provider.getAccessToken();
+        const path = tok ? AUTH_PATH : OPEN_PATH;
         const code = await runCmd(ctx, async () =>
-          await gatewayRequest<PromoListData>(ctx.baseUrl, PROMO_PATH, {
+          await gatewayRequest<PromoListData>(ctx.baseUrl, path, {
             method: 'POST', provider: ctx.provider, body,
             headers: {
               'x-country': String(opts.country),

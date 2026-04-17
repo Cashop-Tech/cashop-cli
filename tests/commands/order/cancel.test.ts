@@ -22,10 +22,12 @@ function makeCtx() {
 }
 
 describe('order cancel', () => {
-  it('posts default reason OTHER with -y and prints the boolean envelope data', async () => {
+  it('posts default reason OTHER with -y and JP/JPY/ja headers and prints boolean data', async () => {
     let captured: Record<string, unknown> = {};
+    const capturedHeaders: Record<string, string> = {};
     server.use(http.post(CANCEL_URL, async ({ request }) => {
       captured = (await request.json()) as Record<string, unknown>;
+      request.headers.forEach((v, k) => { capturedHeaders[k] = v; });
       return HttpResponse.json({
         code: '00000', success: true, message: '成功', extAttrs: null, data: true,
       });
@@ -41,6 +43,7 @@ describe('order cancel', () => {
       cancelSource: 'USER',
       cancelReasonMessage: 'cancelled via cashop-cli',
     });
+    expect(capturedHeaders['x-language']).toBe('ja');
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     expect(out.trim()).toBe('true');
     spy.mockRestore();

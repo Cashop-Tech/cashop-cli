@@ -23,10 +23,12 @@ function makeCtx(overrides: Record<string, unknown> = {}) {
 }
 
 describe('order create', () => {
-  it('posts single-SKU direct buy body with explicit --address', async () => {
+  it('posts single-SKU direct buy body with explicit --address and JP/JPY/ja headers', async () => {
     let captured: unknown = null;
+    const capturedHeaders: Record<string, string> = {};
     server.use(http.post(CREATE_URL, async ({ request }) => {
       captured = await request.json();
+      request.headers.forEach((v, k) => { capturedHeaders[k] = v; });
       return HttpResponse.json({
         code: '00000', success: true, message: '成功', extAttrs: null,
         data: {
@@ -49,6 +51,9 @@ describe('order create', () => {
       products: [{ spuCode: 'JP_1', skuId: 's1', quantity: 2 }],
       deliveryType: 'CONSOLIDATION',
     });
+    expect(capturedHeaders['x-country']).toBe('JP');
+    expect(capturedHeaders['x-currency']).toBe('JPY');
+    expect(capturedHeaders['x-language']).toBe('ja');
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     expect(JSON.parse(out).orderGroupNo).toBe('OG_1');
     spy.mockRestore();

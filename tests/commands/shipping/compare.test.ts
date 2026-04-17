@@ -22,10 +22,12 @@ function makeCtx() {
 }
 
 describe('cashop shipping compare', () => {
-  it('posts required country/weight with default 10cm dimensions and sortType=1', async () => {
+  it('posts required country/weight with default 10cm dimensions, sortType=1, and JP/JPY/ja headers', async () => {
     let captured: Record<string, unknown> = {};
+    const capturedHeaders: Record<string, string> = {};
     server.use(http.post(SHIPPING_URL, async ({ request }) => {
       captured = (await request.json()) as Record<string, unknown>;
+      request.headers.forEach((v, k) => { capturedHeaders[k] = v; });
       return HttpResponse.json({
         code: '00000', success: true, message: '成功', extAttrs: null,
         data: { lines: [{ lineCode: 'JP_STD', freight: 800 }] },
@@ -47,6 +49,9 @@ describe('cashop shipping compare', () => {
       height: 10,
       sortType: 1,
     });
+    expect(capturedHeaders['x-country']).toBe('JP');
+    expect(capturedHeaders['x-currency']).toBe('JPY');
+    expect(capturedHeaders['x-language']).toBe('ja');
     const out = spy.mock.calls.map(c => String(c[0])).join('');
     expect(JSON.parse(out).lines[0].freight).toBe(800);
     spy.mockRestore();
