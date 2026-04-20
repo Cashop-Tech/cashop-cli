@@ -91,6 +91,8 @@ cashop-cli/
 │   ├── release-admin.yml              # admin release
 │   ├── post-release-check.yml
 │   └── verify-tap-token.yml
+├── skills/                            # openclaw AgentSkills manifests
+│   └── cashop/SKILL.md                # C 端 cashop bin 的 agent skill
 └── packages/
     ├── core/                          # @cashop/core
     ├── cli-c/                         # cashop-cli（C 端，tsup 单文件 bundle）

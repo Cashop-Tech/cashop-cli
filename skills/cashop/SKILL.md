@@ -102,7 +102,7 @@ metadata:
 
 - 加 `--json` 得到结构化 `{code, msg, data}` —— 直接解 `data`
 - 不加 `--json` 是给人看的表格/文本，**不要**让 agent parse
-- 非零 exit code = 失败；错误会经 `core/errors.ts` 映射到可读信息
+- 非零 exit code = 失败；错误经 `@cashop/core` 的 errors 映射到可读信息
 - stderr 可能含诊断信息，正常响应看 stdout
 
 ## 常见坑
