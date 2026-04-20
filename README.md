@@ -1,106 +1,102 @@
-# Cashop-CLI
+# cashop-cli
 
-Official command-line interface for the Cashop platform.
+Cashop 平台 CLI 的 pnpm monorepo，承载两条独立命令行和一个共享的底层包。
 
-> Status: **early P0 development**. Not yet released — build from source.
+| Package | 命令 | 用途 | 分发渠道 |
+|---|---|---|---|
+| [`packages/cli-c`](./packages/cli-c) (`cashop-cli`) | `cashop` | C 端消费者 CLI（登录 / 搜索 / 购物车 / 下单 / Chat TUI / API Key） | Homebrew、`install.sh` |
+| [`packages/cli-admin`](./packages/cli-admin) (`@cashop-tech/console-cli`) | `cashop-console` | 运营管理后台 CLI + MCP Server（销售商品 / 资源位 / 品牌故事 / 上传 / …） | Homebrew、`install.sh` |
+| [`packages/core`](./packages/core) (`@cashop/core`) | — | 共享底层（`errors` / `output` / `http/requestJson`） | 仓内 workspace 依赖，tsup 打包时内联到两个 CLI，**不单独发布** |
 
-## Install
+## 终端用户安装
 
-### Homebrew (macOS and Linux)
+### C 端 CLI (`cashop`)
 
 ```bash
+# Homebrew（推荐）
 brew install cashop-tech/tap/cashop
-```
 
-### Shell installer
-
-```bash
+# 或 shell 安装脚本
 curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/install.sh | bash
 ```
 
-Pin a specific version:
+详见 [`packages/cli-c/README.md`](./packages/cli-c/README.md)。
+
+### 运营 admin CLI (`cashop-console`)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/install.sh \
-  | CASHOP_CLI_VERSION=0.1.0 bash
+# Homebrew（推荐）
+brew tap cashop-tech/tap
+brew install cashop-tech/tap/cashop-console
+
+# 或 shell 安装脚本
+curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/packages/cli-admin/install.sh | bash
 ```
 
-Both methods require Node.js ≥ 18. Homebrew installs Node automatically; the shell installer prints a platform-specific hint if it's missing.
+详见 [`packages/cli-admin/README.md`](./packages/cli-admin/README.md)。
 
-### Build from source
+## 开发
 
 ```bash
-pnpm install
-pnpm run build
-node dist/entry.js --help
+pnpm install                     # 装所有 workspace 依赖
+
+pnpm -r typecheck                # 三个包全量类型检查
+pnpm -r test                     # 三个包全量单测（core 13 / cli-c 193 / cli-admin 131）
+pnpm -r build                    # 全量构建（core 先于两个 CLI）
+
+pnpm --filter cashop-cli dev     # C 端 tsx watch
+pnpm --filter @cashop-tech/console-cli dev   # admin tsup watch
 ```
 
-## Usage
+要求：`Node.js ≥ 18`、`pnpm ≥ 10.13.0`（锁在根 `package.json#packageManager`）。
 
-### Enter the TUI (main entry)
+### 加一个新 CLI 命令
 
-```bash
-cashop                   # interactive TUI
-cashop --resume          # TUI + continue last chat session
+- **C 端**：见 [`packages/cli-c/CLAUDE.md`](./packages/cli-c/CLAUDE.md) 的 "Adding a new subcommand"
+- **admin**：见 [`packages/cli-admin/CLAUDE.md`](./packages/cli-admin/CLAUDE.md) 的 "Adding New API Modules"
+
+### 共享代码进 `@cashop/core` 的判断原则
+
+只放**跨 CLI 通用、和具体鉴权模型无关**的东西。已纳入：
+
+- `errors`：`BadArgsError` / `NetworkError` / `HttpError` / `exitCodeFor` 等退出码契约
+- `output`：cli-table3 + JSON 格式化（暂未被 admin 消费，保留复用余地）
+- `http/requestJson`：裸 fetch + 超时 + 重试，不触碰 token / envelope / reauth
+
+**不要**放的：config dir、token-store、auth-provider、envelope 解析（`{code,success,data}` 属于 gateway 业务语义，C 端和 admin 的 envelope 及错误码映射互不兼容）。
+
+## 发布
+
+两条 CLI 独立发布、独立打 tag：
+
+| CLI | Tag 触发 | Workflow |
+|---|---|---|
+| `cashop-cli` | `v*.*.*` / `v*.*.*-rc.*` | [`release.yml`](./.github/workflows/release.yml) |
+| `@cashop-tech/console-cli` | `admin-v*.*.*` / `admin-v*.*.*-beta.*` / `admin-v*.*.*-rc.*` | [`release-admin.yml`](./.github/workflows/release-admin.yml) |
+
+两条流水线都：跑 typecheck/test → `tsup` 打包（把 `@cashop/core` 内联） → 生成 tarball + sha256 → 创建 GitHub Release → stable 版本同步 bump `Cashop-Tech/homebrew-tap` 中的对应 formula。
+
+## 目录结构
+
 ```
-
-Inside the TUI:
-- plain text → chat with the AI
-- `!<verb>` → run a shell subcommand (output is shown in the conversation)
-- `/help` → list slash commands (/new /sessions /resume /exit)
-
-### One-shot commands (pipe-friendly)
-
-```bash
-cashop login --email u@x.com --password ...
-cashop logout / whoami
-cashop search <keyword> / product <spuCode>
-cashop cart / cart add --sku ... --spu ... --qty N
-cashop orders / order <orderNo>
-cashop ask "question"          # one-shot AI chat
-cashop sessions                # list chat sessions
-cashop session rm <id>         # delete
+cashop-cli/
+├── install.sh                         # 对外公开 URL 的薄转发，保持老 cashop 安装命令不变
+├── package.json                       # workspace root（private）
+├── pnpm-workspace.yaml
+├── pnpm-lock.yaml
+├── tsconfig.base.json
+├── .github/workflows/
+│   ├── ci.yml
+│   ├── release.yml                    # C 端 release
+│   ├── release-admin.yml              # admin release
+│   ├── post-release-check.yml
+│   └── verify-tap-token.yml
+└── packages/
+    ├── core/                          # @cashop/core
+    ├── cli-c/                         # cashop-cli（C 端，tsup 单文件 bundle）
+    └── cli-admin/                     # @cashop-tech/console-cli（admin，tsup 单文件 bundle）
 ```
-
-## OAuth Device Code Login
-
-```bash
-cashop login --device              # opens browser, prints user_code
-cashop login --device --no-browser # SSH / headless: prints URL + code for manual open
-```
-
-The device flow is an OAuth 2.0 Authorization Grant (RFC 8628). Tokens are stored the
-same way as password tokens (keytar on macOS/Linux desktop, encrypted file on
-headless/SSH). `cashop logout` clears both device and password tokens.
-
-**Concurrency note:** running multiple `cashop` commands in parallel is not supported —
-token refresh is not race-safe. The server detects refresh-token reuse and revokes the
-entire session (703011), which wipes your local CLI token for that env.
-
-## API Keys
-
-Long-lived bearer tokens for automation and CI. Only an interactive
-oauth-device session can mint or revoke them.
-
-```bash
-cashop login --device                         # one-time, gets a device session
-cashop apikey create --name ci-deploy --ttl 90d
-# → prints csk_live_xxxx  (shown once — copy it now)
-
-cashop apikey list
-cashop --api-key csk_live_xxxx search foo     # use the key
-CASHOP_API_KEY=csk_live_xxxx cashop search foo # or via env
-cashop apikey rm ak_xxxx
-```
-
-Limits and semantics: up to 10 active keys per user; TTL choices are
-`30d | 90d | 180d | 1y | never`; `lastUsedAt` is stamped on every request
-(debounced to 60s); keys cannot manage other keys.
-
-Coming soon: the rest of the domain verbs, and install.sh / Homebrew / npm distribution.
 
 ## License
 
-This project is source-available but not open source. All rights reserved
-by Cashop. You may install and use the CLI under the terms of the Cashop
-platform agreement; you may not redistribute or fork the source code.
+UNLICENSED — internal use within Cashop Technology Ltd.

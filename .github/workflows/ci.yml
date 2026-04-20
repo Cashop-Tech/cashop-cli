@@ -10,14 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        # version is read from package.json#packageManager (pnpm@9.12.0).
+        # version is read from root package.json#packageManager (pnpm@10.13.0).
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run typecheck
-      - run: pnpm test
+      - run: pnpm -r --filter=!cashop-workspace typecheck
+      - run: pnpm -r --filter=!cashop-workspace test
 
   shellcheck:
     runs-on: ubuntu-latest
@@ -27,4 +27,4 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
-          shellcheck -S warning install.sh scripts/*.sh
+          shellcheck -S warning install.sh packages/cli-c/install.sh packages/cli-c/scripts/*.sh packages/cli-admin/install.sh packages/cli-admin/scripts/*.sh

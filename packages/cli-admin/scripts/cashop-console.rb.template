@@ -1,0 +1,41 @@
+# One-time setup: copy this file to Cashop-Tech/homebrew-tap/Formula/cashop-console.rb
+# and fill in the initial url/sha256/version from the first admin-v* GitHub Release.
+# After that, release-admin.yml + bump-homebrew-formula.sh will keep it current.
+#
+# Install for end users:
+#   brew install cashop-tech/tap/cashop-console
+#
+# (First-time tap:   brew tap cashop-tech/tap)
+
+class CashopConsole < Formula
+  desc "Cashop operations / admin CLI (MCP-capable)"
+  homepage "https://github.com/Cashop-Tech/cashop-cli/tree/release/packages/cli-admin"
+  url "https://github.com/Cashop-Tech/cashop-cli/releases/download/admin-v0.1.0-beta.9/cashop-console-cli-0.1.0-beta.9.tar.gz"
+  sha256 "REPLACE_WITH_ACTUAL_SHA256"
+  version "0.1.0-beta.9"
+  license "UNLICENSED"
+
+  depends_on "node"
+
+  def install
+    # Stage the tarball contents into libexec, run `npm install` there for
+    # production deps, then expose `cashop-console` via a thin bash wrapper.
+    # (Matches the pattern used by the sibling `cashop` formula — see notes in
+    # packages/cli-c/CLAUDE.md "Formula install block (non-obvious)".)
+    libexec.install Dir["*"]
+
+    cd libexec do
+      system "npm", "install", "--omit=dev", "--no-audit", "--no-fund"
+    end
+
+    (bin/"cashop-console").write <<~SH
+      #!/usr/bin/env bash
+      exec "#{Formula["node"].opt_bin}/node" "#{libexec}/dist/cashop-console.js" "$@"
+    SH
+    (bin/"cashop-console").chmod 0755
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/cashop-console --version")
+  end
+end

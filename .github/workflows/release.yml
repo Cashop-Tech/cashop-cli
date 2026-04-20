@@ -26,13 +26,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        run: pnpm run typecheck
+        run: pnpm --filter @cashop/core --filter cashop-cli typecheck
 
       - name: Test
-        run: pnpm test
+        run: pnpm --filter @cashop/core --filter cashop-cli test
 
       - name: Build
-        run: pnpm run build
+        run: pnpm --filter @cashop/core --filter cashop-cli build
 
       - name: Extract version
         id: ver
@@ -40,17 +40,30 @@ jobs:
 
       - name: Verify package.json version matches tag
         run: |
-          pkg_ver=$(node -p "require('./package.json').version")
+          pkg_ver=$(node -p "require('./packages/cli-c/package.json').version")
           if [ "$pkg_ver" != "${{ steps.ver.outputs.version }}" ]; then
-            echo "::error::package.json version ($pkg_ver) does not match tag (${{ steps.ver.outputs.version }})"
+            echo "::error::packages/cli-c/package.json version ($pkg_ver) does not match tag (${{ steps.ver.outputs.version }})"
             exit 1
           fi
 
       - name: Pack tarball
+        working-directory: packages/cli-c
         run: |
           mkdir -p release
+          # Tarball layout stays the same as pre-monorepo: dist/ + package.json + lockfile + docs.
+          # @cashop/core is bundled into dist/entry.js by tsup (noExternal),
+          # so we strip the workspace:* dep from the shipped package.json —
+          # npm install after extraction must not see it.
+          node -e '
+            const pkg = JSON.parse(require("fs").readFileSync("package.json","utf8"));
+            delete pkg.dependencies["@cashop/core"];
+            require("fs").writeFileSync("package.json.release", JSON.stringify(pkg, null, 2) + "\n");
+          '
+          cp ../../pnpm-lock.yaml pnpm-lock.yaml
           tar -czf "release/cashop-cli-${{ steps.ver.outputs.version }}.tar.gz" \
-              dist/ package.json pnpm-lock.yaml README.md CHANGELOG.md
+              --transform 's|^package.json.release$|package.json|' \
+              dist/ package.json.release pnpm-lock.yaml README.md CHANGELOG.md
+          rm pnpm-lock.yaml package.json.release
           cd release
           sha256sum "cashop-cli-${{ steps.ver.outputs.version }}.tar.gz" \
               > "cashop-cli-${{ steps.ver.outputs.version }}.sha256"
@@ -65,6 +78,7 @@ jobs:
           fi
 
       - name: Smoke-test the tarball
+        working-directory: packages/cli-c
         run: |
           set -e
           mkdir smoke && cd smoke
@@ -80,6 +94,7 @@ jobs:
           esac
 
       - name: Build release notes
+        working-directory: packages/cli-c
         run: |
           {
             ./scripts/extract-changelog.sh "${{ steps.ver.outputs.version }}"
@@ -89,13 +104,14 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
-          body_path: release_notes.md
+          files: packages/cli-c/release/*
+          body_path: packages/cli-c/release_notes.md
           prerelease: ${{ steps.pre.outputs.prerelease == 'true' }}
           fail_on_unmatched_files: true
 
       - name: Bump Homebrew formula
         if: steps.pre.outputs.prerelease == 'false'
+        working-directory: packages/cli-c
         env:
           TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: ./scripts/bump-homebrew-formula.sh "${{ steps.ver.outputs.version }}"

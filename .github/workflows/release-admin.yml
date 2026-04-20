@@ -1,0 +1,121 @@
+name: Release (admin CLI)
+
+on:
+  push:
+    tags:
+      - 'admin-v*.*.*'
+      - 'admin-v*.*.*-beta.*'
+      - 'admin-v*.*.*-rc.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --filter @cashop/core --filter @cashop-tech/console-cli typecheck
+
+      - name: Test
+        run: pnpm --filter @cashop/core --filter @cashop-tech/console-cli test
+
+      - name: Build
+        run: pnpm --filter @cashop/core --filter @cashop-tech/console-cli build
+
+      - name: Extract version
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#admin-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package.json version matches tag
+        run: |
+          pkg_ver=$(node -p "require('./packages/cli-admin/package.json').version")
+          if [ "$pkg_ver" != "${{ steps.ver.outputs.version }}" ]; then
+            echo "::error::packages/cli-admin/package.json version ($pkg_ver) does not match tag (${{ steps.ver.outputs.version }})"
+            exit 1
+          fi
+
+      - name: Pack tarball
+        working-directory: packages/cli-admin
+        run: |
+          mkdir -p release
+          # @cashop/core is bundled into dist/cashop-console.js by tsup (noExternal),
+          # so we strip the workspace:* dep from the shipped package.json —
+          # npm install after extraction must not see it.
+          node -e '
+            const pkg = JSON.parse(require("fs").readFileSync("package.json","utf8"));
+            delete pkg.dependencies["@cashop/core"];
+            require("fs").writeFileSync("package.json.release", JSON.stringify(pkg, null, 2) + "\n");
+          '
+          cp ../../pnpm-lock.yaml pnpm-lock.yaml
+          tar -czf "release/cashop-console-cli-${{ steps.ver.outputs.version }}.tar.gz" \
+              --transform 's|^package.json.release$|package.json|' \
+              dist/ package.json.release pnpm-lock.yaml README.md
+          rm pnpm-lock.yaml package.json.release
+          cd release
+          sha256sum "cashop-console-cli-${{ steps.ver.outputs.version }}.tar.gz" \
+              > "cashop-console-cli-${{ steps.ver.outputs.version }}.sha256"
+
+      - name: Detect prerelease
+        id: pre
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == *-rc.* || "${GITHUB_REF_NAME}" == *-beta.* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Smoke-test the tarball
+        working-directory: packages/cli-admin
+        run: |
+          set -e
+          mkdir smoke && cd smoke
+          tar -xzf "../release/cashop-console-cli-${{ steps.ver.outputs.version }}.tar.gz"
+          npm install --omit=dev --no-audit --no-fund --loglevel=error
+          out=$(node dist/cashop-console.js --version)
+          case "$out" in
+            *"${{ steps.ver.outputs.version }}"*) ;;
+            *)
+              echo "::error::tarball version mismatch (got '$out', expected '${{ steps.ver.outputs.version }}')"
+              exit 1
+              ;;
+          esac
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packages/cli-admin/release/*
+          name: ${{ github.ref_name }}
+          body: |
+            Cashop admin CLI release `${{ steps.ver.outputs.version }}`.
+
+            Install via Homebrew (stable releases only):
+            ```
+            brew install cashop-tech/tap/cashop-console
+            ```
+
+            Install via shell script (all releases, incl. beta):
+            ```
+            curl -fsSL https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/packages/cli-admin/install.sh | bash
+            ```
+          prerelease: ${{ steps.pre.outputs.prerelease == 'true' }}
+          fail_on_unmatched_files: true
+
+      - name: Bump Homebrew formula
+        if: steps.pre.outputs.prerelease == 'false'
+        working-directory: packages/cli-admin
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: ./scripts/bump-homebrew-formula.sh "${{ steps.ver.outputs.version }}"

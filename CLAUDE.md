@@ -1,119 +1,86 @@
-# cashop-cli (Claude Code guide)
+# cashop-cli monorepo (Claude Code guide)
 
-TypeScript CLI for the Cashop platform. Submodule of `cashop-workspace`.
+pnpm workspace 承载两条独立 CLI 与一个共享底层包。整体概览看 [README.md](./README.md)；本文件集中列出开发规则和 Claude 在本仓库里工作时要遵守的红线。
 
-## Quick commands
+## Workspace 结构
 
-```bash
-pnpm install
-pnpm run dev -- --help             # dev mode (tsx)
-pnpm test                          # unit tests (vitest)
-pnpm run typecheck                 # tsc --noEmit
-pnpm run build                     # compile to dist/
+```
+packages/core          @cashop/core              共享底层（errors / output / http/requestJson）
+packages/cli-c         cashop-cli (bin: cashop)  C 端消费者 CLI（已有详细 CLAUDE.md）
+packages/cli-admin     @cashop-tech/console-cli  运营 admin CLI + MCP Server（已有详细 CLAUDE.md）
 ```
 
-## P1 shell command paths
+子包里的 `CLAUDE.md` 是该包的权威规范：
 
-Commands are flat (no `auth`/`product`/`order` groups); files are still grouped by domain on disk.
+- C 端约束：见 [`packages/cli-c/CLAUDE.md`](./packages/cli-c/CLAUDE.md)
+- admin 约束：见 [`packages/cli-admin/CLAUDE.md`](./packages/cli-admin/CLAUDE.md)
+- 本文件只管 **跨包**、**workspace 级**、**发布级** 的事情
 
-- `cashop login --email … --password …` / `cashop logout` / `cashop whoami`
-- `cashop config` / `cashop config <key>` / `cashop config <key> <value>`
-- `cashop env` / `cashop env stable|prod`
-- `cashop search <keyword>` / `cashop product <spuCode>`
-- `cashop cart` (list, default) / `cashop cart add --spu … --sku … --qty …`
-- `cashop orders` / `cashop order <orderNo>`
+## 必做
 
-## P2 TUI + chat (2026-04-15)
+- 每次改动完跑 `pnpm -r typecheck` 和 `pnpm -r test`，必须全绿才算完成
+- 任何跨包重构改完，务必 `pnpm -r build` 确认两个 tsup bundle 都能产出（产物：`packages/cli-c/dist/entry.js`、`packages/cli-admin/dist/cashop-console.js`）
+- 新增依赖用 `pnpm --filter <pkg> add <dep>`（永远指定 filter，不要污染其他包）
+- 运行 C 端命令：`pnpm --filter cashop-cli dev -- <args>`；运行 admin：`node packages/cli-admin/dist/cashop-console.js <args>`（或先 build）
 
-- `cashop` (no args) → readline TUI; prefixes: plain=chat, `!`=bang, `/`=slash
-- `cashop --resume` → TUI + continue `last_session_id`
-- `cashop ask "<msg>" [--resume|--session <id>] [--json]` → one-shot SSE chat
-- `cashop sessions` → `GET /ai/cashop-ai/rpc/auth/sessions`
-- `cashop session rm <id>` → `DELETE /ai/cashop-ai/rpc/auth/sessions/{id}` (`-y` skip confirm)
+## 红线（跨包）
 
-TUI dispatches:
-- `parseLine(raw)` → `{kind: 'empty'|'chat'|'bang'|'slash', ...}`
-- bang builds a fresh `Command` with `exitOverride()` and reuses P1 modules
-- slash commands: `/help` `/new` `/sessions` `/resume <id>` `/exit`
+- **绝对不要**把 C 端 auth / token / envelope 逻辑搬进 `@cashop/core`。两条 CLI 的鉴权模型根本不同（C 端：OAuth Device + ApiKey + password；admin：SSO browser + 凭据 + token paste），强行统一只会制造条件分支地狱
+- **绝对不要**让 `@cashop/core` 反向依赖任意一个 CLI；core 不感知 gateway envelope（`{code,success,data}`）
+- **绝对不要**给 `@cashop/core` 加运行时重依赖；目前只允许 `cli-table3` 这种纯显示类 dep
+- **绝对不要**在根目录以外再放 `pnpm-lock.yaml`。workspace 的锁文件只允许在仓库根
+- **绝对不要**把 `@cashop/core` 发布到 npm / GitHub Packages。它存在的唯一意义是被 tsup `noExternal` 吃进两个 CLI 的 bundle
 
-State:
-- `~/.cashop/chat.yaml` holds `last_session_id` only (messages live server-side)
+## tsup `noExternal` 契约（关键）
 
-## Architecture
+两条 CLI 的 `tsup.config.ts` 都声明了 `noExternal: ['@cashop/core']`。同时 release workflow 会在打 tarball 之前用 `node -e` 从 `package.json` 里**删掉** `@cashop/core` 这一条 workspace 依赖（因为 `npm install` 无法解析 `workspace:*`）。这套组合保证：
 
-- `src/entry.ts`: argv → Commander → preAction builds CliContext → subcommand `.action()`
-- `src/core/*`: config, logger, http-client, token-store, auth-provider, output, errors, confirm, globals
-- `src/commands/<domain>/<verb>.ts`: one file per subcommand (most register flat top-level verbs on `program`; `cart/*` still share a `cart` group via `ensureGroup`)
-- All network calls go through `core/http-client.ts::gatewayRequest`
-- All token storage goes through `core/token-store.ts`
-- All errors flow through `core/errors.ts` + `core/_helpers.ts::runCmd`
+- workspace 开发时：`@cashop/core` 通过 symlink 解析
+- tsup 构建时：`@cashop/core` 的源码被内联到 `dist/entry.js` / `dist/cashop-console.js`
+- 用户安装时：tarball 里的 `package.json` 不含 `@cashop/core`，`npm install --omit=dev` 只装真正的外部依赖
 
-## Rules
+**改动 tsup 配置、package.json dependencies、或 release.yml 的打包步骤时都要重新推演这三段是不是还对齐**。配错的典型症状：tarball 装完运行时 `Cannot find package '@cashop/core'`。
 
-- **Never** call `fetch`, `undici`, or any HTTP library directly in command or TUI code — use `gatewayRequest`
-- **Never** write to `~/.cashop/` outside `core/config.ts` or `core/token-store.ts`
-- **Every** command gets a test under `tests/commands/<domain>/<verb>.test.ts`
-- `pnpm test` must pass before every push
-- Endpoint shapes live in `src/types/api.ts`; update there first if the gateway changes
+## 版本 & 发布
 
-## Adding a new subcommand
+- C 端版本写在 `packages/cli-c/package.json`，tag 形如 `v0.1.5`
+- admin 版本写在 `packages/cli-admin/package.json`，tag 形如 `admin-v0.1.0` / `admin-v0.1.0-beta.9`
+- 两个 release.yml 都会先 `verify package.json.version === tag`（去掉前缀后比较），不一致直接红
+- stable 版本（非 `-rc.*` / `-beta.*`）会自动 bump `Cashop-Tech/homebrew-tap`：
+  - C 端 → `Formula/cashop.rb`
+  - admin → `Formula/cashop-console.rb`（首次需按 `packages/cli-admin/scripts/cashop-console.rb.template` 手工建 formula，之后自动）
+- 绝对**不要**把 `v*` 和 `admin-v*` 写反——走错 workflow、打错 tarball 名、污染 Homebrew
 
-1. Capture gateway endpoint shape (path/method/request/response) and paste into a PR comment
-2. Add DTOs to `src/types/api.ts`
-3. Write failing test in `tests/commands/<domain>/<verb>.test.ts`
-4. Implement `src/commands/<domain>/<verb>.ts`
-5. Register in `src/entry.ts`
-6. Commit test + impl + registration together
+## 对外 URL（不能动）
 
-## P5 apikey commands
+这些 URL 有外部用户/脚本在用，重命名 = 破坏安装：
 
-Long-lived bearer tokens for automation. Managed only by an oauth-device
-session (guarded by `requireOAuthDevice` — trying to create a key while
-authenticated with another api-key returns 703013).
+- `https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/install.sh`（根层薄转发，C 端安装入口）
+- `https://raw.githubusercontent.com/Cashop-Tech/cashop-cli/release/packages/cli-admin/install.sh`（admin 安装入口）
+- `https://github.com/Cashop-Tech/cashop-cli/releases/download/v${v}/cashop-cli-${v}.tar.gz`
+- `https://github.com/Cashop-Tech/cashop-cli/releases/download/admin-v${v}/cashop-console-cli-${v}.tar.gz`
 
-- `cashop apikey create --name <n> [--ttl 30d|90d|180d|1y|never] [--json]` →
-  `{kid, key, name, createdAt, expiresAt}`; `key` is shown once
-- `cashop apikey list [--json]` → name, kid, createdAt, expiresAt, lastUsedAt
-- `cashop apikey rm <kid> [-y] [--json]` → confirm prompt unless `-y`
+移动 `install.sh` 物理位置时，记得根 `install.sh` 的转发 fallback 要能通过 raw.githubusercontent 重新抓取。
 
-Using a key for requests: `cashop --api-key <csk_live_xxx> search foo` (or
-`CASHOP_API_KEY` env var). The provider layer was wired in P4; P5 only
-adds the management verbs.
+## 常用命令速查
 
-Friendly errors (see `src/core/errors.ts`):
-- `703012` reached 10-key limit
-- `703013` api-key cannot manage api-keys
-- `703014` duplicate name
-- `703015` kid not found / not owned
+```bash
+# 全量
+pnpm -r typecheck
+pnpm -r test
+pnpm -r build
 
-Smoke: `scripts/smoke-apikey.sh` — login via device, create, list, call
-search via `--api-key`, assert `lastUsedAt` updated, revoke, list empty.
+# 单包
+pnpm --filter @cashop/core test
+pnpm --filter cashop-cli dev -- login --device
+pnpm --filter @cashop-tech/console-cli build
 
-## P6 distribution (2026-04-15)
+# 本地模拟 tarball 安装（用于验 release workflow 改动）
+cd packages/cli-c   # or packages/cli-admin
+node -e 'const p=JSON.parse(require("fs").readFileSync("package.json","utf8"));delete p.dependencies["@cashop/core"];require("fs").writeFileSync("/tmp/p.json",JSON.stringify(p,null,2))'
+# → 复制 dist/ + /tmp/p.json + README + (CHANGELOG) + 根 pnpm-lock.yaml 到临时目录，npm install --omit=dev
+```
 
-Path C: Node tarball + on-device `npm install`. No npm registry publish, no Bun binary.
+## 仓库性质
 
-- Release trigger: push tag `v*.*.*` (stable) or `v*.*.*-rc.*` (prerelease) → `.github/workflows/release.yml`
-- Artifacts: `cashop-cli-<ver>.tar.gz` (dist/ + package.json + pnpm-lock.yaml + README + CHANGELOG) + `.sha256`
-- Homebrew tap auto-bumped by `scripts/bump-homebrew-formula.sh` (stable only) → `Cashop-Tech/homebrew-tap`
-- Shell installer: `install.sh` on `release` branch, served via `raw.githubusercontent.com`
-- Post-release verification: manually dispatch `.github/workflows/post-release-check.yml` (matrix: ubuntu + macos for install.sh, macos for brew)
-
-Versioning:
-- `src/entry.ts` reads version from `package.json` at runtime via `createRequire(import.meta.url)` — single source of truth
-- Release CI verifies `package.json.version === tag`; mismatch fails the build
-- On `release` branch, keep `package.json` at `<next>-dev` between releases; bump to the real version when tagging
-
-Formula install block (non-obvious):
-- Tarball has no `bin/` scripts and `dist/entry.js` lacks exec bit, so `std_npm_args` + `bin.install_symlink` gives "Empty installation"
-- Current pattern: copy tarball into `libexec`, run `npm install --omit=dev` inside, write `bin/cashop` as a bash exec wrapper calling `node libexec/dist/entry.js`
-- `bump-homebrew-formula.sh` only sed-replaces url/sha256/version — does NOT touch the install block
-
-## P0 milestone map
-
-- **P1**: scaffold + password auth + product/cart/order commands
-- **P2**: TUI + SSE chat + session persistence
-- **P3**: OAuth Device Code (backend + consent page)
-- **P4**: CLI wires to OAuth
-- **P5**: API Key provider + gateway unified auth
-- **P6** (done 2026-04-15): tag-driven release → GitHub Release + Homebrew tap + install.sh, no npm publish
+本仓库是 `cashop-workspace` 的 git submodule。在这里跑的 commit 需要回父仓更新 submodule 指针。不要在本仓库里做会破坏 submodule 关系的操作（改 `.git` 路径、改 remote URL 等）。
