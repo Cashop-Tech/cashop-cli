@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import type { AuthBundle } from '../../src/core/config.js';
 
 // tmpDir is set before each test and read by the os mock below.
-// It must be declared in the outer scope so the factory closure can reference it.
 let tmpDir: string;
 
 vi.mock('os', async () => {
@@ -20,7 +20,6 @@ vi.mock('os', async () => {
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cashop-cli-test-'));
-  // Clear the module registry so config.ts re-evaluates CONFIG_DIR with the new tmpDir.
   vi.resetModules();
 });
 
@@ -28,10 +27,19 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-// Helper: dynamically import config after resetModules so each test gets a
-// fresh module evaluation with the current tmpDir.
 async function importConfig() {
   return import('../../src/core/config.js');
+}
+
+function makeBundle(overrides: Partial<AuthBundle> = {}): AuthBundle {
+  return {
+    accessToken: 'at',
+    refreshToken: 'rt',
+    expiresAt: Date.now() + 60_000,
+    username: 'alice',
+    savedAt: Date.now(),
+    ...overrides,
+  };
 }
 
 describe('readConfig', () => {
@@ -69,56 +77,57 @@ describe('writeConfig', () => {
     writeConfig(cfg);
     expect(readConfig()).toEqual(cfg);
   });
-});
 
-describe('getToken / setToken', () => {
-  it('returns undefined when no token has been stored for an env', async () => {
-    const { getToken } = await importConfig();
-    expect(getToken('stable')).toBeUndefined();
-  });
-
-  it('stores and retrieves a token per environment', async () => {
-    const { setToken, getToken } = await importConfig();
-    setToken('stable', 'tok-stable-123');
-    expect(getToken('stable')).toBe('tok-stable-123');
-  });
-
-  it('stores tokens independently for different environments', async () => {
-    const { setToken, getToken } = await importConfig();
-    setToken('stable', 'tok-stable');
-    setToken('prod', 'tok-prod');
-    expect(getToken('stable')).toBe('tok-stable');
-    expect(getToken('prod')).toBe('tok-prod');
-  });
-
-  it('overwrites an existing token for the same environment', async () => {
-    const { setToken, getToken } = await importConfig();
-    setToken('stable', 'first');
-    setToken('stable', 'second');
-    expect(getToken('stable')).toBe('second');
+  it('sets 0600 permissions on the config file when first created', async () => {
+    if (process.platform === 'win32') return;
+    const { writeConfig } = await importConfig();
+    writeConfig({ env: 'prod' });
+    const file = path.join(tmpDir, '.cashop-console', 'config.json');
+    const mode = fs.statSync(file).mode & 0o777;
+    expect(mode).toBe(0o600);
   });
 });
 
-describe('clearToken', () => {
-  it('removes the token for the specified environment', async () => {
-    const { setToken, getToken, clearToken } = await importConfig();
-    setToken('stable', 'tok-abc');
-    clearToken('stable');
-    expect(getToken('stable')).toBeUndefined();
+describe('getAuth / setAuth / clearAuth', () => {
+  it('returns undefined when no bundle is stored', async () => {
+    const { getAuth } = await importConfig();
+    expect(getAuth('stable')).toBeUndefined();
   });
 
-  it('does not affect tokens for other environments', async () => {
-    const { setToken, getToken, clearToken } = await importConfig();
-    setToken('stable', 'tok-stable');
-    setToken('prod', 'tok-prod');
-    clearToken('stable');
-    expect(getToken('prod')).toBe('tok-prod');
+  it('stores and retrieves an AuthBundle per environment', async () => {
+    const { setAuth, getAuth } = await importConfig();
+    const bundle = makeBundle({ accessToken: 'at-stable' });
+    setAuth('stable', bundle);
+    expect(getAuth('stable')?.accessToken).toBe('at-stable');
   });
 
-  it('is a no-op when the config has no tokens at all', async () => {
-    const { clearToken, readConfig } = await importConfig();
-    // Should not throw even when tokens map is absent
-    expect(() => clearToken('stable')).not.toThrow();
+  it('keeps bundles for different environments separate', async () => {
+    const { setAuth, getAuth } = await importConfig();
+    setAuth('stable', makeBundle({ accessToken: 'at-s' }));
+    setAuth('prod', makeBundle({ accessToken: 'at-p' }));
+    expect(getAuth('stable')?.accessToken).toBe('at-s');
+    expect(getAuth('prod')?.accessToken).toBe('at-p');
+  });
+
+  it('overwrites an existing bundle for the same env (immutable update)', async () => {
+    const { setAuth, getAuth } = await importConfig();
+    setAuth('stable', makeBundle({ accessToken: 'first' }));
+    setAuth('stable', makeBundle({ accessToken: 'second' }));
+    expect(getAuth('stable')?.accessToken).toBe('second');
+  });
+
+  it('clearAuth removes only the specified env', async () => {
+    const { setAuth, getAuth, clearAuth } = await importConfig();
+    setAuth('stable', makeBundle({ accessToken: 'at-s' }));
+    setAuth('prod', makeBundle({ accessToken: 'at-p' }));
+    clearAuth('stable');
+    expect(getAuth('stable')).toBeUndefined();
+    expect(getAuth('prod')?.accessToken).toBe('at-p');
+  });
+
+  it('clearAuth is a no-op when no auth is stored', async () => {
+    const { clearAuth, readConfig } = await importConfig();
+    expect(() => clearAuth('stable')).not.toThrow();
     expect(readConfig()).toEqual({});
   });
 });
@@ -135,26 +144,9 @@ describe('setConfigValue / getConfigValue', () => {
     expect(getConfigValue('nonExistentKey')).toBeUndefined();
   });
 
-  it('overwrites an existing value', async () => {
-    const { setConfigValue, getConfigValue } = await importConfig();
-    setConfigValue('env', 'stable');
-    setConfigValue('env', 'prod');
-    expect(getConfigValue('env')).toBe('prod');
-  });
-
-  it('returns undefined for non-string values', async () => {
-    // Write a config where a key holds a non-string (e.g. tokens object)
-    const { writeConfig, getConfigValue } = await importConfig();
-    writeConfig({ tokens: { stable: 'tok' } });
-    // 'tokens' is an object, not a string — getConfigValue must return undefined
-    expect(getConfigValue('tokens')).toBeUndefined();
-  });
-
-  it('persists multiple keys independently', async () => {
-    const { setConfigValue, getConfigValue } = await importConfig();
-    setConfigValue('defaultSite', 'site-a');
-    setConfigValue('env', 'prod');
-    expect(getConfigValue('defaultSite')).toBe('site-a');
-    expect(getConfigValue('env')).toBe('prod');
+  it('returns undefined for non-string values (e.g. the auth object)', async () => {
+    const { setAuth, getConfigValue } = await importConfig();
+    setAuth('stable', makeBundle());
+    expect(getConfigValue('auth')).toBeUndefined();
   });
 });

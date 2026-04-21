@@ -33,20 +33,19 @@ bin/cashop-console.ts            # 入口：args[0]==="mcp-server" → MCP, 否�
   └── src/mcp/tools.ts           # McpServer tools 注册，Zod schema → 调 API → JSON text content
 
 共享层（admin 内部）：
-  src/api/*.ts                   # 业务 API 函数，接收 ApiContext{env,token} + 参数，transport-agnostic
-  src/core/client.ts             # apiRequest() — 基于 @cashop/core 的 requestJson 原语，
-                                 #   负责注入 X-AUTHENTICATION (+ 外部用户 MD5 header)、
-                                 #   解包 ApiResponse<T> envelope、映射 401/403/4003 为 AuthenticationError
-  src/core/credential-login.ts   # SSO 凭据登录（DES 加密 + axios 直连 SSO 端点）
-  src/core/sso-login.ts          # SSO 浏览器登录（open + axios 换 token）
-  src/core/auth.ts               # Token 解析优先级：--token flag > CASHOP_TOKEN env > config file
-  src/core/environments.ts       # stable/prod URL 定义，默认 prod
-  src/core/config.ts             # ~/.cashop-console/config.json 读写
-  src/core/output.ts             # admin 专属的 Markdown-table 输出（与 @cashop/core 的 format 不同 API，
-                                 #   因此没有合并；两者按需共存）
+  src/api/*.ts                   # 业务 API 函数，接收 ApiContext{env} + 参数，transport-agnostic
+  src/api/internal-auth.ts       # internal-auth 端点封装（login / token/refresh / me / logout），
+                                 #   不走 apiRequest，直接用 @cashop/core 的 requestJson
+  src/core/client.ts             # apiRequest() — 自动从 config 读 AuthBundle、过期预刷新、
+                                 #   401/40103 自动 refresh + 重放（单次）、并发 refresh 合并；
+                                 #   请求头用 Authorization: Bearer <accessToken>
+  src/core/internal-auth-login.ts # CLI 交互式登录：readline 无回显密码 + TOTP 提示
+  src/core/environments.ts       # stable/prod apiUrl 定义，默认 prod
+  src/core/config.ts             # ~/.cashop-console/config.json 读写 + AuthBundle 存储（0600 权限）
+  src/core/output.ts             # admin 专属的 Markdown-table 输出
 
 跨包共享（@cashop/core）：
-  errors                         # Cashop/ApiError/AuthenticationError 仍在 admin 本地；
+  errors                         # CashopError/ApiError/AuthenticationError 仍在 admin 本地；
                                  # @cashop/core 只提供 HttpError / NetworkError（给 requestJson 用）
   http/requestJson               # 网关调用的底层 fetch 原语（超时 + 重试）
 ```
@@ -54,21 +53,25 @@ bin/cashop-console.ts            # 入口：args[0]==="mcp-server" → MCP, 否�
 ## Key Conventions
 
 - **ESM only**：`"type": "module"`，import 需要 `.js` 后缀
-- **HTTP 入口只能是 `apiRequest`**：不要在 commands / api 模块里直接 `fetch` / 引 axios；axios 仅限 `credential-login.ts` 与 `sso-login.ts` 两个 SSO 非网关流使用
-- **API 响应统一解包**：后端返回 `{ code, message, success, data }`，`apiRequest` 内部解包 envelope 后直接返回 `data`，调用方拿到 `T`
-- **认证失败处理**：HTTP 401/403 或 envelope code=4003/403 → 抛 `AuthenticationError`；其他非 success → `ApiError`
+- **HTTP 入口只能是 `apiRequest`**：业务命令/API 调用一律走 `src/core/client.ts` 的 `apiRequest`；auth 域自己直接用 `@cashop/core` 的 `requestJson`，不走 `apiRequest`（避免鉴权循环）
+- **API 响应统一解包**：后端返回 `{ code, message, success, data }`，`apiRequest` 判成功的条件是 `code===0 || success===true`（同时兼容新 auth 与老网关 API）
+- **认证失败处理**：HTTP 401/403 或 envelope code=40103/4003/403 → 自动 refresh 一次并重放；refresh 失败则 `clearAuth(env)` + 抛 `AuthenticationError`
+- **并发刷新合并**：模块级 `refreshInFlight` Map 保证同一 env 并发请求只触发一次 `/token/refresh`
+- **登录方案**：唯一方案 = 用户名 + 密码 + Google Authenticator TOTP；`auth login` 支持交互输入或 `--username/--password/--totp`
+- **Token 存储**：`~/.cashop-console/config.json` 的 `auth[env]` 字段（chmod 0600），结构 `{ accessToken, refreshToken, expiresAt, username, savedAt }`；refresh 返回新的 refreshToken 时会覆盖保存
+- **首次用户（needSetup）**：CLI 不实现 reset-password / bind-totp 流程，明确提示用户去 web 完成后再回 CLI
 - **MCP Tool 命名**：CLI `noun verb` → MCP `cashop-console_{noun}_{verb}`
-- **MCP context**：从环境变量 `CASHOP_ENV` + `CASHOP_TOKEN` 获取，不走 config 文件
+- **MCP context**：从环境变量 `CASHOP_ENV` 获取环境；`CASHOP_ACCESS_TOKEN`（或兼容别名 `CASHOP_TOKEN`）可注入静态 accessToken（CI 场景，无 refresh 能力）；否则走 config 文件里的 AuthBundle（本地开发）
 - **资源位操作**：effect/lose-effect/delete 自动获取 version（乐观锁），调用方无需手动指定
 - **Hero Banner 操作**：封装了 detail → parse content JSON → modify imgList → save 的完整流程
 - **文件上传**：presigned URL 模式，先获取预签名 URL，再 PUT 到 R2
 
 ## Environment URLs
 
-| env | apiUrl | ssoLoginUrl |
-|-----|--------|-------------|
-| stable | api.castable.hk | login.castable.hk |
-| prod | api.cashop.com | login.cashop.com |
+| env | apiUrl |
+|-----|--------|
+| stable | api.castable.hk |
+| prod | api.cashop.com |
 
 ## Adding New API Modules
 

@@ -1,3 +1,5 @@
+import type { EnvironmentName } from './environments.js';
+
 export interface ApiResponse<T> {
   code: number;
   message: string;
@@ -18,7 +20,12 @@ export interface PageQuery {
   pageSize?: number;
 }
 
+/**
+ * Context passed from a CLI command / MCP tool down to the API layer.
+ *
+ * Only the environment is required — auth (accessToken / refreshToken) is read
+ * directly from config by `apiRequest`, with automatic refresh on expiry.
+ */
 export interface ApiContext {
-  env: import('./environments.js').EnvironmentName;
-  token: string;
+  env: EnvironmentName;
 }

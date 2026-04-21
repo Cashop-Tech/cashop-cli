@@ -1,151 +1,330 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
-import { apiRequest } from '../../src/core/client.js';
-import { ApiError, AuthenticationError } from '../../src/core/errors.js';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import type { AuthBundle } from '../../src/core/config.js';
+
+// ---------------------------------------------------------------------------
+// Isolate config dir per test
+// ---------------------------------------------------------------------------
+
+let tmpDir: string;
+
+vi.mock('os', async () => {
+  const actual = await vi.importActual<typeof import('os')>('os');
+  return {
+    ...actual,
+    default: { ...actual, homedir: () => tmpDir },
+  };
+});
 
 const ENV = 'stable' as const;
 const API_BASE = 'https://api.castable.hk';
-const SSO_BASE = 'https://login.castable.hk';
-const TOKEN = 'test-token-abc';
+const AUTH_PATH = '/basic/cashop-internal-auth/api/v1/token/refresh';
 
 const originalFetch = globalThis.fetch;
 
-afterEach(() => {
-  globalThis.fetch = originalFetch;
-  vi.restoreAllMocks();
-});
+function seed(bundle: AuthBundle): void {
+  const dir = path.join(tmpDir, '.cashop-console');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'config.json'),
+    JSON.stringify({ env: ENV, auth: { [ENV]: bundle } }, null, 2),
+  );
+}
 
-type FetchArgs = { url: string; init: RequestInit };
+function readBundle(): AuthBundle | undefined {
+  const file = path.join(tmpDir, '.cashop-console', 'config.json');
+  if (!fs.existsSync(file)) return undefined;
+  const cfg = JSON.parse(fs.readFileSync(file, 'utf-8')) as {
+    auth?: Record<string, AuthBundle>;
+  };
+  return cfg.auth?.[ENV];
+}
 
-function captureFetch(response: Response): { calls: FetchArgs[] } {
-  const calls: FetchArgs[] = [];
-  globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
-    const url = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : input.url);
+function freshBundle(overrides: Partial<AuthBundle> = {}): AuthBundle {
+  return {
+    accessToken: 'old-at',
+    refreshToken: 'old-rt',
+    expiresAt: Date.now() + 5 * 60_000,
+    username: 'alice',
+    savedAt: Date.now(),
+    ...overrides,
+  };
+}
+
+type FetchCall = { url: string; init: RequestInit };
+
+function installFetch(
+  handlers: Array<(url: string, init: RequestInit) => Response | Promise<Response>>,
+): { calls: FetchCall[] } {
+  const calls: FetchCall[] = [];
+  let i = 0;
+  globalThis.fetch = (async (
+    input: string | URL | Request,
+    init: RequestInit = {},
+  ) => {
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
     calls.push({ url, init });
-    return response.clone();
+    const handler = handlers[Math.min(i, handlers.length - 1)];
+    i += 1;
+    return await handler!(url, init);
   }) as typeof fetch;
   return { calls };
 }
 
-function jsonResponse(body: unknown, status = 200): Response {
+function jsonResp(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
 }
 
-describe('apiRequest — envelope unwrap', () => {
-  it('returns the unwrapped data payload when success=true', async () => {
-    captureFetch(jsonResponse({ success: true, code: 200, message: 'ok', data: { id: 1, name: 'Alice' } }));
-    const out = await apiRequest<{ id: number; name: string }>({
-      env: ENV, token: TOKEN, method: 'GET', url: '/user/1',
+beforeEach(() => {
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cashop-client-test-'));
+  vi.resetModules();
+});
+
+afterEach(() => {
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+  globalThis.fetch = originalFetch;
+  vi.restoreAllMocks();
+});
+
+// ---------------------------------------------------------------------------
+// Suite
+// ---------------------------------------------------------------------------
+
+describe('apiRequest — basic envelope handling', () => {
+  it('sends Authorization: Bearer and unwraps envelope on success', async () => {
+    seed(freshBundle());
+    const { calls } = installFetch([
+      () => jsonResp({ success: true, code: 0, message: 'ok', data: { ping: 'pong' } }),
+    ]);
+    const { apiRequest } = await import('../../src/core/client.js');
+    const out = await apiRequest<{ ping: string }>({
+      env: ENV,
+      method: 'GET',
+      url: '/ping',
     });
-    expect(out).toEqual({ id: 1, name: 'Alice' });
+    expect(out).toEqual({ ping: 'pong' });
+    expect(calls[0]!.url).toBe(`${API_BASE}/ping`);
+    const headers = new Headers(calls[0]!.init.headers);
+    expect(headers.get('authorization')).toBe('Bearer old-at');
   });
 
-  it('throws ApiError when envelope success=false with generic business code', async () => {
-    captureFetch(jsonResponse({ success: false, code: 10001, message: 'Not found', data: null }));
+  it('accepts legacy success=true / code=200 envelopes', async () => {
+    seed(freshBundle());
+    installFetch([
+      () => jsonResp({ success: true, code: 200, message: 'ok', data: 'legacy' }),
+    ]);
+    const { apiRequest } = await import('../../src/core/client.js');
     await expect(
-      apiRequest({ env: ENV, token: TOKEN, method: 'GET', url: '/items' }),
-    ).rejects.toThrow(ApiError);
+      apiRequest<string>({ env: ENV, method: 'GET', url: '/legacy' }),
+    ).resolves.toBe('legacy');
   });
 
-  it('ApiError carries the server-provided message and code', async () => {
-    captureFetch(jsonResponse({ success: false, code: 10001, message: 'Not found', data: null }));
+  it('throws ApiError for non-auth envelope failure', async () => {
+    seed(freshBundle());
+    installFetch([
+      () => jsonResp({ success: false, code: 10001, message: 'Not found', data: null }),
+    ]);
+    const { apiRequest } = await import('../../src/core/client.js');
+    const { ApiError } = await import('../../src/core/errors.js');
     await expect(
-      apiRequest({ env: ENV, token: TOKEN, method: 'GET', url: '/items' }),
-    ).rejects.toThrow('API Error [10001]: Not found');
+      apiRequest({ env: ENV, method: 'GET', url: '/x' }),
+    ).rejects.toBeInstanceOf(ApiError);
   });
 
-  it('maps envelope code 4003 to AuthenticationError', async () => {
-    captureFetch(jsonResponse({ success: false, code: 4003, message: 'Token invalid', data: null }));
-    await expect(
-      apiRequest({ env: ENV, token: TOKEN, method: 'GET', url: '/secure' }),
-    ).rejects.toThrow(AuthenticationError);
-  });
-
-  it('maps envelope code 403 to AuthenticationError', async () => {
-    captureFetch(jsonResponse({ success: false, code: 403, message: 'Forbidden', data: null }));
-    await expect(
-      apiRequest({ env: ENV, token: TOKEN, method: 'GET', url: '/secure' }),
-    ).rejects.toThrow(AuthenticationError);
-  });
-});
-
-describe('apiRequest — HTTP-level errors', () => {
-  it('maps HTTP 401 to AuthenticationError', async () => {
-    captureFetch(jsonResponse({ message: 'Unauthorized' }, 401));
-    await expect(
-      apiRequest({ env: ENV, token: TOKEN, method: 'GET', url: '/secure' }),
-    ).rejects.toThrow(AuthenticationError);
-  });
-
-  it('maps HTTP 403 to AuthenticationError', async () => {
-    captureFetch(jsonResponse({ message: 'Forbidden' }, 403));
-    await expect(
-      apiRequest({ env: ENV, token: TOKEN, method: 'GET', url: '/secure' }),
-    ).rejects.toThrow(AuthenticationError);
-  });
-
-  it('maps HTTP 5xx to ApiError', async () => {
-    captureFetch(jsonResponse({ message: 'Internal Server Error', code: 500 }, 500));
-    await expect(
-      apiRequest({ env: ENV, token: TOKEN, method: 'GET', url: '/broken' }),
-    ).rejects.toThrow(ApiError);
-  });
-});
-
-describe('apiRequest — request wiring', () => {
-  it('injects X-AUTHENTICATION on api calls', async () => {
-    const { calls } = captureFetch(jsonResponse({ success: true, code: 200, message: 'ok', data: 'pong' }));
-    await apiRequest<string>({ env: ENV, token: TOKEN, method: 'GET', url: '/ping' });
-    expect(calls).toHaveLength(1);
-    const call = calls[0]!;
-    const headers = headersToObject(call.init.headers);
-    expect(headers['x-authentication']).toBe(TOKEN);
-    expect(call.url).toBe(`${API_BASE}/ping`);
-  });
-
-  it('uses the sso base URL when baseUrlType=sso', async () => {
-    const { calls } = captureFetch(jsonResponse({ success: true, code: 200, message: 'ok', data: { sessionId: 's1' } }));
-    await apiRequest({ env: ENV, token: TOKEN, method: 'POST', url: '/login', baseUrlType: 'sso', data: {} });
-    expect(calls[0]!.url).toBe(`${SSO_BASE}/login`);
-  });
-
-  it('appends query params to the URL', async () => {
-    const { calls } = captureFetch(jsonResponse({ success: true, code: 200, message: 'ok', data: [] }));
+  it('appends query params to URL', async () => {
+    seed(freshBundle());
+    const { calls } = installFetch([
+      () => jsonResp({ success: true, code: 0, message: 'ok', data: null }),
+    ]);
+    const { apiRequest } = await import('../../src/core/client.js');
     await apiRequest({
-      env: ENV, token: TOKEN, method: 'GET', url: '/search',
-      params: { q: 'shoe', page: 1 },
+      env: ENV,
+      method: 'GET',
+      url: '/search',
+      params: { q: 'shoe', page: 1, skip: undefined },
     });
     expect(calls[0]!.url).toBe(`${API_BASE}/search?q=shoe&page=1`);
   });
+});
 
-  it('sends a JSON-serialised POST body', async () => {
-    const { calls } = captureFetch(jsonResponse({ success: true, code: 200, message: 'created', data: { id: 99 } }));
-    const body = { name: 'New Item' };
-    await apiRequest({ env: ENV, token: TOKEN, method: 'POST', url: '/items', data: body });
-    expect(calls[0]!.init.method).toBe('POST');
-    expect(JSON.parse(String(calls[0]!.init.body))).toEqual(body);
-  });
-
-  it('skips undefined/null query params', async () => {
-    const { calls } = captureFetch(jsonResponse({ success: true, code: 200, message: 'ok', data: null }));
-    await apiRequest({
-      env: ENV, token: TOKEN, method: 'GET', url: '/x',
-      params: { a: 1, b: undefined, c: null },
-    });
-    expect(calls[0]!.url).toBe(`${API_BASE}/x?a=1`);
+describe('apiRequest — missing auth', () => {
+  it('throws AuthenticationError when no bundle is present', async () => {
+    const { apiRequest } = await import('../../src/core/client.js');
+    const { AuthenticationError } = await import('../../src/core/errors.js');
+    await expect(
+      apiRequest({ env: ENV, method: 'GET', url: '/x' }),
+    ).rejects.toBeInstanceOf(AuthenticationError);
   });
 });
 
-function headersToObject(h: HeadersInit | undefined): Record<string, string> {
-  if (!h) return {};
-  const out: Record<string, string> = {};
-  if (h instanceof Headers) {
-    h.forEach((v, k) => { out[k.toLowerCase()] = v; });
-    return out;
-  }
-  if (Array.isArray(h)) {
-    for (const [k, v] of h) out[k.toLowerCase()] = v;
-    return out;
-  }
-  for (const [k, v] of Object.entries(h)) out[k.toLowerCase()] = v;
-  return out;
-}
+describe('apiRequest — proactive refresh (expiring soon)', () => {
+  it('refreshes before sending when token expires in < 30s and persists new refreshToken', async () => {
+    seed(freshBundle({ expiresAt: Date.now() + 5_000 }));
+
+    const { calls } = installFetch([
+      (url) => {
+        expect(url).toBe(`${API_BASE}${AUTH_PATH}`);
+        return jsonResp({
+          code: 0,
+          message: 'ok',
+          data: {
+            accessToken: 'new-at',
+            refreshToken: 'new-rt',
+            expiresIn: 7200,
+          },
+        });
+      },
+      (_url, init) => {
+        const headers = new Headers(init.headers);
+        expect(headers.get('authorization')).toBe('Bearer new-at');
+        return jsonResp({ success: true, code: 0, message: 'ok', data: { ok: true } });
+      },
+    ]);
+
+    const { apiRequest } = await import('../../src/core/client.js');
+    const out = await apiRequest<{ ok: boolean }>({
+      env: ENV,
+      method: 'GET',
+      url: '/ping',
+    });
+    expect(out).toEqual({ ok: true });
+    expect(calls).toHaveLength(2);
+
+    const persisted = readBundle();
+    expect(persisted?.accessToken).toBe('new-at');
+    expect(persisted?.refreshToken).toBe('new-rt');
+  });
+
+  it('keeps the old refreshToken when server omits it in the refresh response', async () => {
+    seed(freshBundle({ expiresAt: Date.now() + 5_000, refreshToken: 'keep-me' }));
+    installFetch([
+      () =>
+        jsonResp({
+          code: 0,
+          message: 'ok',
+          data: { accessToken: 'new-at', expiresIn: 3600 },
+        }),
+      () => jsonResp({ success: true, code: 0, message: 'ok', data: null }),
+    ]);
+    const { apiRequest } = await import('../../src/core/client.js');
+    await apiRequest({ env: ENV, method: 'GET', url: '/ping' });
+    expect(readBundle()?.refreshToken).toBe('keep-me');
+  });
+});
+
+describe('apiRequest — reactive refresh on 401 / 40103', () => {
+  it('on envelope code 40103, refreshes and replays the request once', async () => {
+    seed(freshBundle());
+    const { calls } = installFetch([
+      () => jsonResp({ code: 40103, success: false, message: 'Token expired', data: null }),
+      () =>
+        jsonResp({
+          code: 0,
+          message: 'ok',
+          data: { accessToken: 'refreshed-at', refreshToken: 'refreshed-rt', expiresIn: 3600 },
+        }),
+      (_url, init) => {
+        const headers = new Headers(init.headers);
+        expect(headers.get('authorization')).toBe('Bearer refreshed-at');
+        return jsonResp({ success: true, code: 0, message: 'ok', data: 'replayed' });
+      },
+    ]);
+    const { apiRequest } = await import('../../src/core/client.js');
+    await expect(
+      apiRequest<string>({ env: ENV, method: 'GET', url: '/x' }),
+    ).resolves.toBe('replayed');
+    expect(calls).toHaveLength(3);
+    expect(calls[1]!.url).toContain(AUTH_PATH);
+  });
+
+  it('on HTTP 401, refreshes and replays the request once', async () => {
+    seed(freshBundle());
+    installFetch([
+      () => jsonResp({ message: 'Unauthorized' }, 401),
+      () =>
+        jsonResp({
+          code: 0,
+          message: 'ok',
+          data: { accessToken: 'a2', refreshToken: 'r2', expiresIn: 3600 },
+        }),
+      () => jsonResp({ success: true, code: 0, message: 'ok', data: 'ok' }),
+    ]);
+    const { apiRequest } = await import('../../src/core/client.js');
+    await expect(
+      apiRequest<string>({ env: ENV, method: 'GET', url: '/x' }),
+    ).resolves.toBe('ok');
+  });
+
+  it('clears auth and throws when refresh itself fails with 401', async () => {
+    seed(freshBundle());
+    installFetch([
+      () => jsonResp({ message: 'Unauthorized' }, 401),
+      () => jsonResp({ code: 40301, message: 'Refresh token invalid', data: null }),
+    ]);
+    const { apiRequest } = await import('../../src/core/client.js');
+    const { AuthenticationError } = await import('../../src/core/errors.js');
+    await expect(
+      apiRequest({ env: ENV, method: 'GET', url: '/x' }),
+    ).rejects.toBeInstanceOf(AuthenticationError);
+    expect(readBundle()).toBeUndefined();
+  });
+});
+
+describe('apiRequest — concurrent refresh coalescing', () => {
+  it('two concurrent requests sharing an expiring token trigger only one refresh', async () => {
+    seed(freshBundle({ expiresAt: Date.now() + 5_000 }));
+
+    let refreshCount = 0;
+    const handlers: Array<(url: string, init: RequestInit) => Response | Promise<Response>> = [];
+    for (let i = 0; i < 8; i += 1) {
+      handlers.push((url) => {
+        if (url.includes(AUTH_PATH)) {
+          refreshCount += 1;
+          return jsonResp({
+            code: 0,
+            message: 'ok',
+            data: { accessToken: 'at2', refreshToken: 'rt2', expiresIn: 3600 },
+          });
+        }
+        return jsonResp({ success: true, code: 0, message: 'ok', data: 'ok' });
+      });
+    }
+    installFetch(handlers);
+
+    const { apiRequest } = await import('../../src/core/client.js');
+    await Promise.all([
+      apiRequest({ env: ENV, method: 'GET', url: '/a' }),
+      apiRequest({ env: ENV, method: 'GET', url: '/b' }),
+    ]);
+
+    expect(refreshCount).toBe(1);
+    expect(readBundle()?.accessToken).toBe('at2');
+  });
+});
+
+describe('apiRequest — static access token override', () => {
+  it('uses the override and does not refresh', async () => {
+    // No seed: no bundle in config.
+    const { calls } = installFetch([
+      () => jsonResp({ success: true, code: 0, message: 'ok', data: 'ok' }),
+    ]);
+    const { apiRequest, setStaticAccessToken } = await import(
+      '../../src/core/client.js'
+    );
+    try {
+      setStaticAccessToken('static-at');
+      await apiRequest({ env: ENV, method: 'GET', url: '/ping' });
+      const headers = new Headers(calls[0]!.init.headers);
+      expect(headers.get('authorization')).toBe('Bearer static-at');
+    } finally {
+      setStaticAccessToken(undefined);
+    }
+  });
+});

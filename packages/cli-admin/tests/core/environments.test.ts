@@ -12,31 +12,22 @@ describe('DEFAULT_ENVIRONMENT', () => {
 });
 
 describe('getEnvironment', () => {
-  it('returns the stable environment with correct URLs', () => {
+  it('returns the stable environment with correct apiUrl', () => {
     const env = getEnvironment('stable');
     expect(env.name).toBe('stable');
     expect(env.apiUrl).toBe('https://api.castable.hk');
-    expect(env.ssoLoginUrl).toBe('https://login.castable.hk');
   });
 
-  it('returns the prod environment with correct URLs', () => {
+  it('returns the prod environment with correct apiUrl', () => {
     const env = getEnvironment('prod');
     expect(env.name).toBe('prod');
     expect(env.apiUrl).toBe('https://api.cashop.com');
-    expect(env.ssoLoginUrl).toBe('https://login.cashop.com');
   });
 
   it('every environment has a non-empty apiUrl', () => {
     const envNames: EnvironmentName[] = ['stable', 'prod'];
     for (const name of envNames) {
       expect(getEnvironment(name).apiUrl).toBeTruthy();
-    }
-  });
-
-  it('every environment has a non-empty ssoLoginUrl', () => {
-    const envNames: EnvironmentName[] = ['stable', 'prod'];
-    for (const name of envNames) {
-      expect(getEnvironment(name).ssoLoginUrl).toBeTruthy();
     }
   });
 

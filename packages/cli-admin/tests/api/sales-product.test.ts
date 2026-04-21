@@ -15,7 +15,9 @@ import {
 // Test context and constants
 // ---------------------------------------------------------------------------
 
-const ctx = { env: 'stable' as const, token: 'test-token' };
+import { setStaticAccessToken } from '../../src/core/client.js';
+
+const ctx = { env: 'stable' as const };
 const BASE = '/marketing/cashop-marketing-cms-manager/api/manage/product/site/product';
 const HOST = 'https://api.castable.hk';
 
@@ -29,10 +31,12 @@ function ok<T>(data: T) {
 
 beforeEach(() => {
   nock.cleanAll();
+  setStaticAccessToken('test-token');
 });
 
 afterEach(() => {
   nock.cleanAll();
+  setStaticAccessToken(undefined);
 });
 
 // ---------------------------------------------------------------------------

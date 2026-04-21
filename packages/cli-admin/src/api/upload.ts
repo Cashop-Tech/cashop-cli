@@ -1,13 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { apiRequest } from '../core/client.js';
-import type { EnvironmentName } from '../core/environments.js';
 import { lookup } from '../core/mime.js';
+import type { ApiContext } from '../core/types.js';
 
-export interface ApiContext {
-  env: EnvironmentName;
-  token: string;
-}
+export type { ApiContext } from '../core/types.js';
 
 // ---------------------------------------------------------------------------
 // Presign response
@@ -31,7 +28,6 @@ export async function getPresignedUploadUrl(
 ): Promise<PresignResult> {
   return apiRequest<PresignResult>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: '/marketing/cashop-marketing-cms-manager/api/manage/biz/upload/presign',
     params: params as unknown as Record<string, unknown>,

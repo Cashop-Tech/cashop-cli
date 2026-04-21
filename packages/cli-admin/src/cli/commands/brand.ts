@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { resolveAuthContext } from '../../core/auth.js';
 import { DEFAULT_ENVIRONMENT, type EnvironmentName } from '../../core/environments.js';
 import { formatJson, formatTable } from '../../core/output.js';
 import {
@@ -22,29 +21,22 @@ import type { ApiContext } from '../../api/brand.js';
 interface GlobalOpts {
   env: EnvironmentName;
   json: boolean;
-  token?: string;
 }
 
 function getGlobalOpts(cmd: Command): GlobalOpts {
   const opts = cmd.optsWithGlobals<{
     env?: string;
     json?: boolean;
-    token?: string;
   }>();
 
   return {
     env: (opts.env ?? DEFAULT_ENVIRONMENT) as EnvironmentName,
     json: !!opts.json,
-    token: opts.token,
   };
 }
 
 function makeCtx(globalOpts: GlobalOpts): ApiContext {
-  const { token, env } = resolveAuthContext({
-    env: globalOpts.env,
-    token: globalOpts.token,
-  });
-  return { env, token };
+  return { env: globalOpts.env };
 }
 
 // ---------------------------------------------------------------------------

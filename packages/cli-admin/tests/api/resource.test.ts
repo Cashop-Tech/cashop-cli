@@ -21,7 +21,9 @@ import type { ResourceDetail, HeroBannerContent } from '../../src/api/resource.j
 // Test context and constants
 // ---------------------------------------------------------------------------
 
-const ctx = { env: 'stable' as const, token: 'test-token' };
+import { setStaticAccessToken } from '../../src/core/client.js';
+
+const ctx = { env: 'stable' as const };
 const BASE = '/marketing/cashop-marketing-cms-manager/api/manage/resource';
 const HOST = 'https://api.castable.hk';
 
@@ -80,10 +82,12 @@ const mockDetail: ResourceDetail = {
 
 beforeEach(() => {
   nock.cleanAll();
+  setStaticAccessToken('test-token');
 });
 
 afterEach(() => {
   nock.cleanAll();
+  setStaticAccessToken(undefined);
 });
 
 // ---------------------------------------------------------------------------

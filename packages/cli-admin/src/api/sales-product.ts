@@ -162,7 +162,6 @@ export async function listSalesProducts(
 ): Promise<PageResult<SalesProductItem>> {
   return apiRequest<PageResult<SalesProductItem>>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/query-by-page`,
     data: params,
@@ -178,7 +177,6 @@ export async function getSalesProductDetail(
 ): Promise<SalesProductDetail> {
   return apiRequest<SalesProductDetail>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/query-detail`,
     data: params,
@@ -194,7 +192,6 @@ export async function getSalesProductPrice(
 ): Promise<SalesProductPriceDetail> {
   return apiRequest<SalesProductPriceDetail>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/query-price-detail`,
     data: params,
@@ -210,7 +207,6 @@ export async function getSalesProductStock(
 ): Promise<SalesProductStockDetail> {
   return apiRequest<SalesProductStockDetail>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/query-stock`,
     data: params,
@@ -226,7 +222,6 @@ export async function updateSaleStatus(
 ): Promise<boolean> {
   return apiRequest<boolean>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/update-sale-status`,
     data: params,
@@ -242,7 +237,6 @@ export async function updatePrices(
 ): Promise<boolean> {
   return apiRequest<boolean>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/update-prices`,
     data: params,
@@ -258,7 +252,6 @@ export async function clearManualPricing(
 ): Promise<boolean> {
   return apiRequest<boolean>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/clear-manual-pricing`,
     data: params,
@@ -274,7 +267,6 @@ export async function calculatePromotionFeePrice(
 ): Promise<CalculatedSkuPrice[]> {
   return apiRequest<CalculatedSkuPrice[]>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/calculate-promotion-fee-price`,
     data: params,
@@ -304,7 +296,6 @@ export async function getSiteAllConfig(
 ): Promise<SiteConfig> {
   return apiRequest<SiteConfig>({
     env: ctx.env,
-    token: ctx.token,
     method: 'GET',
     url: '/marketing/cashop-marketing-cms-manager/api/manage/product/exchange-rate/site-config/getSiteAllConfig',
     params: { siteId },

@@ -181,7 +181,6 @@ export async function listBrands(
 ): Promise<PageResult<BrandItem>> {
   return apiRequest<PageResult<BrandItem>>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BRAND_BASE}/query-page`,
     data: params,
@@ -197,7 +196,6 @@ export async function getBrandDetail(
 ): Promise<BrandDetail> {
   return apiRequest<BrandDetail>({
     env: ctx.env,
-    token: ctx.token,
     method: 'GET',
     url: `${BRAND_BASE}/detail/${brandId}`,
   });
@@ -213,7 +211,6 @@ export async function listBrandStories(
 ): Promise<PageResult<BrandStoryItem>> {
   const raw = await apiRequest<BrandStoryListResponse | null>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${STORY_BASE}/query-page`,
     data: params,
@@ -240,7 +237,6 @@ export async function getBrandStoryDetail(
 ): Promise<BrandStoryDetail> {
   return apiRequest<BrandStoryDetail>({
     env: ctx.env,
-    token: ctx.token,
     method: 'GET',
     url: `${STORY_BASE}/detail/${brandStoryId}`,
   });
@@ -255,7 +251,6 @@ export async function saveBrandStory(
 ): Promise<unknown> {
   return apiRequest<unknown>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${STORY_BASE}/save`,
     data,
@@ -271,7 +266,6 @@ export async function updateBrandStory(
 ): Promise<unknown> {
   return apiRequest<unknown>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${STORY_BASE}/update/${data.id}`,
     data,
@@ -286,7 +280,6 @@ export async function getSupportedLanguages(
 ): Promise<LanguageItem[]> {
   return apiRequest<LanguageItem[]>({
     env: ctx.env,
-    token: ctx.token,
     method: 'GET',
     url: `${COMMON_BASE}/languages`,
   });

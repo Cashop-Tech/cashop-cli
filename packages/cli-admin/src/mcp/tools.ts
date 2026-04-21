@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { EnvironmentName } from '../core/environments.js';
+import { setStaticAccessToken } from '../core/client.js';
 import { uploadFile, getPresignedUploadUrl } from '../api/upload.js';
 import {
   listSalesProducts,
@@ -29,11 +30,6 @@ import {
   createHeroBanner,
 } from '../api/resource.js';
 import {
-  getUserInfo,
-  getCurrentStation,
-  updateStation,
-} from '../api/user.js';
-import {
   listBrands,
   getBrandDetail,
   listBrandStories,
@@ -49,16 +45,19 @@ import {
 
 interface McpAuthContext {
   env: EnvironmentName;
-  token: string;
 }
 
+/**
+ * Resolve env and install a static accessToken override if the caller set
+ * CASHOP_ACCESS_TOKEN (or legacy CASHOP_TOKEN). When no env-supplied token is
+ * present, requests fall back to the normal config-backed auth (which
+ * requires the user to have run `cashop-console auth login`).
+ */
 function getMcpContext(): McpAuthContext {
   const env = (process.env['CASHOP_ENV'] ?? 'prod') as EnvironmentName;
-  const token = process.env['CASHOP_TOKEN'] ?? '';
-  if (!token) {
-    throw new Error('CASHOP_TOKEN environment variable is required');
-  }
-  return { env, token };
+  const token = process.env['CASHOP_ACCESS_TOKEN'] ?? process.env['CASHOP_TOKEN'];
+  setStaticAccessToken(token);
+  return { env };
 }
 
 // ---------------------------------------------------------------------------
@@ -165,42 +164,6 @@ const heroBannerImagePartialSchema = heroBannerImageSchema.partial();
 // ---------------------------------------------------------------------------
 
 export function registerTools(server: McpServer): void {
-  // -------------------------------------------------------------------------
-  // User / Station tools (3)
-  // -------------------------------------------------------------------------
-
-  server.tool(
-    'cashop-console_user_info',
-    'Get current user info including available stations, current station, and roles',
-    {},
-    async () => {
-      return callApi(() => getUserInfo(getMcpContext()));
-    },
-  );
-
-  server.tool(
-    'cashop-console_station_current',
-    'Get the current station for the logged-in user',
-    {},
-    async () => {
-      return callApi(() => getCurrentStation(getMcpContext()));
-    },
-  );
-
-  server.tool(
-    'cashop-console_station_switch',
-    'Switch the current station (checks permission before switching)',
-    {
-      stationCode: z.string().describe('Station code to switch to, e.g. JP, GLOBAL, CN'),
-    },
-    async (params) => {
-      return callApi(async () => {
-        await updateStation(getMcpContext(), params.stationCode);
-        return { success: true, stationCode: params.stationCode };
-      });
-    },
-  );
-
   // -------------------------------------------------------------------------
   // Sales Product tools (8)
   // -------------------------------------------------------------------------
@@ -325,7 +288,6 @@ export function registerTools(server: McpServer): void {
         try {
           return await clearManualPricing(ctx, params);
         } catch (err) {
-          // Auto-retry with confirm=true when server returns BEC001
           const apiErr = err as { code?: string };
           if (apiErr.code === 'BEC001') {
             return await clearManualPricing(ctx, { ...params, confirm: true });

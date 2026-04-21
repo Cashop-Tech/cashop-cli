@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { resolveAuthContext } from '../../core/auth.js';
 import { DEFAULT_ENVIRONMENT, type EnvironmentName } from '../../core/environments.js';
 import { formatJson } from '../../core/output.js';
 import { uploadFile } from '../../api/upload.js';
@@ -24,13 +23,11 @@ export function registerUploadCommands(program: Command): void {
       const opts = cmd.optsWithGlobals<{
         env?: string;
         json?: boolean;
-        token?: string;
       }>();
       const env = (opts.env ?? DEFAULT_ENVIRONMENT) as EnvironmentName;
       const json = !!opts.json;
-      const { token } = resolveAuthContext({ env, token: opts.token });
 
-      const result = await uploadFile({ env, token }, filePath);
+      const result = await uploadFile({ env }, filePath);
 
       if (json) {
         console.log(formatJson(result));

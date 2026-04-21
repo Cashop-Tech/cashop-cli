@@ -6,9 +6,22 @@ import type { EnvironmentName } from './environments.js';
 const CONFIG_DIR = path.join(os.homedir(), '.cashop-console');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
+/**
+ * Credentials returned by the internal-auth login/refresh flow.
+ */
+export interface AuthBundle {
+  accessToken: string;
+  refreshToken: string;
+  /** ms epoch when the access token expires. */
+  expiresAt: number;
+  username?: string;
+  /** ms epoch when this bundle was last persisted. */
+  savedAt: number;
+}
+
 export interface Config {
   env?: EnvironmentName;
-  tokens?: Partial<Record<EnvironmentName, string>>;
+  auth?: Partial<Record<EnvironmentName, AuthBundle>>;
   defaultSite?: string;
 }
 
@@ -26,9 +39,17 @@ export function readConfig(): Config {
 
 export function writeConfig(config: Config): void {
   if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    fs.mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
   }
+  const existed = fs.existsSync(CONFIG_FILE);
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  if (!existed) {
+    try {
+      fs.chmodSync(CONFIG_FILE, 0o600);
+    } catch {
+      // Windows / permission noise — ignore.
+    }
+  }
 }
 
 export function getConfigValue(key: string): string | undefined {
@@ -43,22 +64,20 @@ export function setConfigValue(key: string, value: string): void {
   writeConfig(config as Config);
 }
 
-export function getToken(env: EnvironmentName): string | undefined {
-  const config = readConfig();
-  return config.tokens?.[env];
+export function getAuth(env: EnvironmentName): AuthBundle | undefined {
+  return readConfig().auth?.[env];
 }
 
-export function setToken(env: EnvironmentName, token: string): void {
+export function setAuth(env: EnvironmentName, bundle: AuthBundle): void {
   const config = readConfig();
-  config.tokens = config.tokens ?? {};
-  config.tokens[env] = token;
-  writeConfig(config);
+  const nextAuth = { ...(config.auth ?? {}), [env]: bundle };
+  writeConfig({ ...config, auth: nextAuth });
 }
 
-export function clearToken(env: EnvironmentName): void {
+export function clearAuth(env: EnvironmentName): void {
   const config = readConfig();
-  if (config.tokens) {
-    delete config.tokens[env];
-  }
-  writeConfig(config);
+  if (!config.auth?.[env]) return;
+  const nextAuth = { ...config.auth };
+  delete nextAuth[env];
+  writeConfig({ ...config, auth: nextAuth });
 }

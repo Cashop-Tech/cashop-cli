@@ -201,7 +201,6 @@ export async function listResources(
 ): Promise<PageResult<ResourceItem>> {
   return apiRequest<PageResult<ResourceItem>>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/pageList`,
     data: params,
@@ -219,7 +218,6 @@ export async function getResourceDetail(
 ): Promise<ParsedResourceDetail> {
   const raw = await apiRequest<ResourceDetail>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/detail`,
     params: { id: params.id },
@@ -242,7 +240,6 @@ export async function saveOrUpdateResource(
 ): Promise<ResourceDetail> {
   return apiRequest<ResourceDetail>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/saveOrUpdate`,
     data: params,
@@ -258,7 +255,6 @@ export async function effectResource(
 ): Promise<boolean> {
   return apiRequest<boolean>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/effect`,
     params: {
@@ -277,7 +273,6 @@ export async function loseEffectResource(
 ): Promise<boolean> {
   return apiRequest<boolean>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/loseEffect`,
     params: {
@@ -296,7 +291,6 @@ export async function deleteResource(
 ): Promise<boolean> {
   return apiRequest<boolean>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/delete`,
     params: {
@@ -315,7 +309,6 @@ export async function sortResource(
 ): Promise<boolean> {
   return apiRequest<boolean>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/sort/edit`,
     params: {
@@ -334,7 +327,6 @@ export async function getComponentTypeTree(
 ): Promise<ComponentTypeNode[]> {
   return apiRequest<ComponentTypeNode[]>({
     env: ctx.env,
-    token: ctx.token,
     method: 'GET',
     url: `${BASE}/buildComponentTypeTree`,
   });
@@ -350,7 +342,6 @@ async function fetchHeroBannerDetail(
 ): Promise<{ detail: ResourceDetail; content: HeroBannerContent }> {
   const raw = await apiRequest<ResourceDetail>({
     env: ctx.env,
-    token: ctx.token,
     method: 'POST',
     url: `${BASE}/detail`,
     params: { id },

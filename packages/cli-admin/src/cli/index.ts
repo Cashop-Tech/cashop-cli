@@ -22,7 +22,6 @@ export function createProgram(): Command {
     )
     .option('--json', '以 JSON 格式输出（默认为表格）')
     .option('--site <code>', '站点编码，如 JP（sales-product 命令必填）')
-    .option('--token <token>', '认证 Token（也用于 "auth login" 保存 Token）')
     .option('--verbose', '显示详细日志');
 
   registerAuthCommands(program);
