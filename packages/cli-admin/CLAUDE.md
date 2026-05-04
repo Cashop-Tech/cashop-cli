@@ -109,3 +109,12 @@ bin/cashop-console.ts            # 入口：args[0]==="mcp-server" → MCP, 否�
 | 看板 (dashboard) | `src/pages/dashboard/service.ts` | 未实现 | 数据概览 |
 
 > 新增功能时，参考管理后台对应的 service.ts 和 types.ts 作为 API 接口规范来源，实现后更新此表。
+
+## 技术方案文档
+
+实现需求/重构/排障修复完成后，必须在仓库 `docs/` 目录下补一份技术方案文档：
+
+- 文件路径：`docs/<主题中文名>.md`，文件名允许中文
+- 内容至少包含：背景与目标、方案设计、关键改动点（含文件路径）、风险与回滚、验证方式
+- 提交时与代码改动放在同一个 commit 或紧邻的 commit，不要事后补
+- 已存在历史专用目录的仓库（如 cashop-base 的 `02_设计文档/`、父仓的 `docs/migration/`）继续沿用，不强制改名

@@ -84,3 +84,12 @@ node -e 'const p=JSON.parse(require("fs").readFileSync("package.json","utf8"));d
 ## 仓库性质
 
 本仓库是 `cashop-workspace` 的 git submodule。在这里跑的 commit 需要回父仓更新 submodule 指针。不要在本仓库里做会破坏 submodule 关系的操作（改 `.git` 路径、改 remote URL 等）。
+
+## 技术方案文档
+
+实现需求/重构/排障修复完成后，必须在仓库 `docs/` 目录下补一份技术方案文档：
+
+- 文件路径：`docs/<主题中文名>.md`，文件名允许中文
+- 内容至少包含：背景与目标、方案设计、关键改动点（含文件路径）、风险与回滚、验证方式
+- 提交时与代码改动放在同一个 commit 或紧邻的 commit，不要事后补
+- 已存在历史专用目录的仓库（如 cashop-base 的 `02_设计文档/`、父仓的 `docs/migration/`）继续沿用，不强制改名
