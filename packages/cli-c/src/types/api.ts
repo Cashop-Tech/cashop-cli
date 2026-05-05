@@ -43,12 +43,17 @@ export interface CartData {
   totalTaxAmount?: number;
 }
 
-// Order summary — matches /trade/cashop-order-prod/api/order/list response item shape.
-// Real API uses `orderNo` (not `orderId`), and status is a numeric code (not string enum).
+// Order summary — matches /trade/cashop-order-prod/api/order/v2/list response item shape.
+// 订单状态合并彻底落地后字段语义：
+//   groupFrontendStatus: L1 一级单前台聚合状态（1=待支付/2=交付中/3=退款售后/4=已完成/5=已关闭）
+//   frontendStatus:      L2 二级单前台聚合状态（1=交付中/2=退款售后/3=已完成/4=已关闭，待支付期为 null）
+// 旧 orderStatus（OrderStatusEnum 旧码）字段不再由后端写入，保留字段做历史索引兼容。
 export interface OrderSummary {
   orderNo: string;
   orderGroupNo?: string;
-  orderStatus: number;          // e.g. 2 = 待发货
+  groupFrontendStatus?: number; // L1 码（V2 列表主要状态字段）
+  frontendStatus?: number;      // L2 码（master 维度）
+  orderStatus?: number;         // 旧码兼容字段，可能为 null
   orderStatusName?: string;
   brandId?: string;
   brandName?: string;
@@ -61,7 +66,7 @@ export interface OrderSummary {
   [key: string]: unknown;
 }
 
-// /trade/cashop-order-prod/api/order/list returns PageDTO envelope with nested `data` array.
+// /trade/cashop-order-prod/api/order/v2/list returns PageDTO envelope with nested `data` array.
 export interface OrderListData {
   pageIndex: number;
   pageSize: number;

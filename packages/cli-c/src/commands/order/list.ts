@@ -4,7 +4,8 @@ import { getCtx, runCmd } from '../_helpers.js';
 import { gatewayRequest } from '../../core/http-client.js';
 import type { OrderListData } from '../../types/api.js';
 
-const LIST_PATH = '/trade/cashop-order-prod/api/order/list';
+// 订单状态合并彻底落地后切到 V2：V1 端点（旧 OrderStatusEnum 旧码展示态）已下线
+const LIST_PATH = '/trade/cashop-order-prod/api/order/v2/list';
 
 const mod: CommandModule = {
   register(program: Command) {

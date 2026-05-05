@@ -7,7 +7,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-const LIST_URL = 'http://tgw/trade/cashop-order-prod/api/order/list';
+const LIST_URL = 'http://tgw/trade/cashop-order-prod/api/order/v2/list';
 
 describe('order list', () => {
   it('POSTs pageIndex/pageSize and returns list data', async () => {
